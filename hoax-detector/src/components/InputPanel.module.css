@@ -1,0 +1,221 @@
+/* InputPanel.module.css */
+
+.panel {
+  max-width: 720px;
+  margin: 0 auto var(--spacing-3xl);
+  animation: fadeInUp 0.6s ease-out 0.4s both;
+}
+
+/* ── Tab Switcher ──────────────────────────── */
+.tabBar {
+  display: flex;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  margin-bottom: var(--spacing-lg);
+  border: 1px solid var(--border-color);
+}
+
+.tab {
+  flex: 1;
+  padding: 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.tab:hover {
+  color: var(--text-primary);
+}
+
+.tabActive {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── URL Input ─────────────────────────────── */
+.inputGroup {
+  position: relative;
+}
+
+.urlWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.urlInput {
+  flex: 1;
+  padding: 0.9rem 1.2rem;
+  padding-left: 2.8rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  outline: none;
+  transition: all var(--transition-base);
+}
+
+.urlInput::placeholder {
+  color: var(--text-muted);
+}
+
+.urlInput:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.urlIcon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* ── Image Upload ──────────────────────────── */
+.dropzone {
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2xl);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  background: var(--bg-secondary);
+  position: relative;
+}
+
+.dropzone:hover,
+.dropzoneActive {
+  border-color: var(--accent-blue);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.dropzoneIcon {
+  font-size: 2.5rem;
+  margin-bottom: var(--spacing-md);
+  display: block;
+}
+
+.dropzoneText {
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.dropzoneHint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.fileInput {
+  display: none;
+}
+
+/* ── Image Preview ─────────────────────────── */
+.preview {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.previewImage {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-glass);
+}
+
+.previewInfo {
+  flex: 1;
+}
+
+.previewName {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.previewSize {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.previewRemove {
+  padding: 0.4rem 0.8rem;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: var(--radius-sm);
+  color: var(--accent-red);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-body);
+}
+
+.previewRemove:hover {
+  background: rgba(248, 113, 113, 0.2);
+}
+
+/* ── Submit Button ─────────────────────────── */
+.submitWrapper {
+  margin-top: var(--spacing-lg);
+  display: flex;
+  justify-content: center;
+}
+
+.submitBtn {
+  padding: 0.9rem 2.5rem;
+  font-size: 1rem;
+  min-width: 220px;
+}
+
+.submitBtn svg {
+  animation: none;
+}
+
+.submitBtn:disabled svg {
+  animation: spin 1s linear infinite;
+}
+
+/* ── Error ─────────────────────────────────── */
+.error {
+  margin-top: var(--spacing-md);
+  padding: 0.75rem 1rem;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: var(--radius-md);
+  color: var(--accent-red);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .urlWrapper {
+    flex-direction: column;
+  }
+
+  .dropzone {
+    padding: var(--spacing-xl);
+  }
+}
