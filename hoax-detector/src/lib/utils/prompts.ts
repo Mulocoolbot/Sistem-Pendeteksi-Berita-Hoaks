@@ -141,12 +141,9 @@ Respond in valid JSON format ONLY:
   "keyFindings": ["Key finding 1", "Key finding 2"],
   "redFlags": ["Red flag 1 if any"],
   "positiveIndicators": ["Positive indicator 1 if any"],
-  "evidenceSources": [
+  "sourceEvaluations": [
     {
-      "title": "Source article title",
-      "url": "URL",
-      "siteName": "Site name",
-      "snippet": "Relevant excerpt",
+      "scrapedIndex": 1,
       "similarityScore": 0-100,
       "stance": "supports|contradicts|neutral"
     }

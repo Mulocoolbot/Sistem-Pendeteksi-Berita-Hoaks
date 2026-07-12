@@ -7,6 +7,7 @@ import { analyzeImage, extractClaims, generateSearchQueries, investigateCredibil
 import { checkMultipleClaims, formatFactCheckResults } from '@/lib/services/factcheck';
 import { searchMultipleQueries, formatSearchResults } from '@/lib/services/search';
 import { scrapeMultipleArticles } from '@/lib/services/scraper';
+import { getDomain } from '@/lib/utils/sanitize';
 import type { InvestigationReport, ApiResponse } from '@/lib/types';
 
 export const maxDuration = 60;
@@ -67,13 +68,15 @@ export async function POST(request: NextRequest) {
       searchMultipleQueries(searchQueries),
     ]);
 
-    // ── Step 5: Scrape related articles ───────────────────
+    // ── Step 5: Scrape related articles for comparison ────
     console.log('[5/6] Scraping related articles...');
     const relatedUrls = searchResults.map(r => r.link);
-    const relatedArticles = await scrapeMultipleArticles(relatedUrls, 3);
+    const relatedArticles = await scrapeMultipleArticles(relatedUrls, 5); // Increased max from 3 to 5 for more sources
 
+    // Format evidence for AI
     const factCheckFormatted = formatFactCheckResults(factCheckResults);
     const searchFormatted = formatSearchResults(searchResults);
+
     const relatedFormatted = relatedArticles.length > 0
       ? relatedArticles
           .map(
@@ -98,6 +101,43 @@ export async function POST(request: NextRequest) {
       language
     );
 
+    // Build evidence sources from actual scraped articles & AI valuations
+    const sourceEvaluations = Array.isArray(investigation.sourceEvaluations)
+      ? investigation.sourceEvaluations
+      : [];
+
+    const evidenceSources = relatedArticles.map((art, index) => {
+      const evaluation = sourceEvaluations.find(
+        (e: any) => e.scrapedIndex === index + 1
+      );
+      return {
+        title: art.title,
+        url: art.url,
+        siteName: art.siteName || getDomain(art.url),
+        snippet: art.description || art.content.substring(0, 160),
+        publishedDate: art.publishedDate,
+        similarityScore: typeof evaluation?.similarityScore === 'number'
+          ? evaluation.similarityScore
+          : 0,
+        stance: (evaluation?.stance as any) || 'neutral',
+      };
+    });
+
+    // Fallback to Google search items if no related articles could be scraped
+    if (evidenceSources.length === 0 && searchResults.length > 0) {
+      searchResults.forEach(r => {
+        evidenceSources.push({
+          title: r.title,
+          url: r.link,
+          siteName: r.displayLink,
+          snippet: r.snippet,
+          publishedDate: r.datePublished,
+          similarityScore: 0,
+          stance: 'neutral',
+        });
+      });
+    }
+
     // Build the final report
     const report: InvestigationReport = {
       inputType: 'image',
@@ -115,17 +155,7 @@ export async function POST(request: NextRequest) {
       claimAssessments: Array.isArray(investigation.claimAssessments)
         ? investigation.claimAssessments as InvestigationReport['claimAssessments']
         : [],
-      evidenceSources: Array.isArray(investigation.evidenceSources)
-        ? investigation.evidenceSources as InvestigationReport['evidenceSources']
-        : searchResults.map(r => ({
-            title: r.title,
-            url: r.link,
-            siteName: r.displayLink,
-            snippet: r.snippet,
-            publishedDate: r.datePublished,
-            similarityScore: 0,
-            stance: 'neutral' as const,
-          })),
+      evidenceSources,
       factCheckResults,
 
       analyzedAt: new Date().toISOString(),
