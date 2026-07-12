@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { scrapeArticle, scrapeMultipleArticles } from '@/lib/services/scraper';
-import { extractClaims, generateSearchQueries, investigateCredibility } from '@/lib/services/gemini';
+import { extractClaims, generateSearchQueries, investigateCredibility } from '@/lib/services/groq';
 import { checkMultipleClaims, formatFactCheckResults } from '@/lib/services/factcheck';
 import { searchMultipleQueries, formatSearchResults } from '@/lib/services/search';
 import { isValidUrl } from '@/lib/utils/sanitize';

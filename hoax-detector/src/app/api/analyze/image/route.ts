@@ -3,7 +3,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { analyzeImage, extractClaims, generateSearchQueries, investigateCredibility } from '@/lib/services/gemini';
+import { analyzeImage, extractClaims, generateSearchQueries, investigateCredibility } from '@/lib/services/groq';
 import { checkMultipleClaims, formatFactCheckResults } from '@/lib/services/factcheck';
 import { searchMultipleQueries, formatSearchResults } from '@/lib/services/search';
 import { scrapeMultipleArticles } from '@/lib/services/scraper';
