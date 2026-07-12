@@ -178,7 +178,7 @@ export default function InputPanel({
       {activeTab === 'url' && (
         <div className={styles.inputGroup}>
           <div className={styles.urlWrapper}>
-            <div style={{ position: 'relative', flex: 1 }}>
+            <div style={{ position: 'relative', width: '100%' }}>
               <span className={styles.urlIcon}>🔍</span>
               <input
                 type="url"
