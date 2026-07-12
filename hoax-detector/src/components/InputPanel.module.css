@@ -190,12 +190,40 @@
   min-width: 220px;
 }
 
-.submitBtn svg {
-  animation: none;
+.spinnerSvg {
+  width: 18px;
+  height: 18px;
+  animation: spinRotate 2s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
 }
 
-.submitBtn:disabled svg {
-  animation: spin 1s linear infinite;
+.spinnerPath {
+  stroke: currentColor;
+  stroke-linecap: round;
+  animation: spinDash 1.5s ease-in-out infinite;
+}
+
+@keyframes spinRotate {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spinDash {
+  0% {
+    stroke-dasharray: 1, 150;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -35;
+  }
+  100% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -124;
+  }
 }
 
 /* ── Error ─────────────────────────────────── */

@@ -91,7 +91,12 @@ export default function AnalysisTimeline({ currentStep, language }: AnalysisTime
           const state = getStepState(index);
           const { label, description } = getStepDetails(step.id);
           return (
-            <div key={step.id} className={styles.step}>
+            <div key={step.id} className={`${styles.step} ${
+              state === 'complete' ? styles.stepLineComplete :
+              state === 'active' ? styles.stepLineActive :
+              state === 'error' ? styles.stepLineError :
+              ''
+            }`}>
               <div
                 className={`${styles.stepIcon} ${
                   state === 'complete' ? styles.stepComplete :
@@ -101,7 +106,9 @@ export default function AnalysisTimeline({ currentStep, language }: AnalysisTime
                 }`}
               >
                 {state === 'active' ? (
-                  <div className={styles.spinner} />
+                  <svg className={styles.spinnerSvg} viewBox="0 0 50 50">
+                    <circle className={styles.spinnerPath} cx="25" cy="25" r="20" fill="none" strokeWidth="5" />
+                  </svg>
                 ) : state === 'complete' ? (
                   '✓'
                 ) : state === 'error' ? (
@@ -131,7 +138,7 @@ export default function AnalysisTimeline({ currentStep, language }: AnalysisTime
       <div className={styles.progressWrapper}>
         <div className={styles.progressBar}>
           <div
-            className={styles.progressFill}
+            className={`${styles.progressFill} ${currentStep !== 'complete' && currentStep !== 'error' ? styles.progressActive : ''}`}
             style={{ width: `${progressPercent}%` }}
           />
         </div>

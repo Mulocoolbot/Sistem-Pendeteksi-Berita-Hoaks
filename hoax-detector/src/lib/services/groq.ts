@@ -13,10 +13,15 @@ import {
 } from '@/lib/utils/prompts';
 import { safeJsonParse } from '@/lib/utils/sanitize';
 
+interface GroqError {
+  status?: number;
+  message?: string;
+}
+
 // Model untuk teks biasa (cepat & gratis)
 const TEXT_MODEL = 'llama-3.3-70b-versatile';
 // Model untuk vision/image (mendukung gambar)
-const VISION_MODEL = 'llama-3.2-90b-vision-preview';
+const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
 function getGroqClient(): Groq {
   const apiKey = process.env.GROQ_API_KEY;
@@ -47,21 +52,44 @@ function getLanguageName(code: string): string {
 async function chatCompletion(prompt: string, languageCode: string = 'id'): Promise<string> {
   const groq = getGroqClient();
   const langName = getLanguageName(languageCode);
-  const result = await groq.chat.completions.create({
-    model: TEXT_MODEL,
-    messages: [
-      {
-        role: 'system',
-        content: `You are a professional fact-checker and investigative journalist AI. Always respond in valid JSON format. All user-facing text in the JSON (such as summaries, explanations, claims, assessments, and findings) MUST be written in ${langName}.`,
-      },
-      { role: 'user', content: prompt },
-    ],
-    temperature: 0.3,
-    max_tokens: 4096,
-    response_format: { type: 'json_object' },
-  });
 
-  return result.choices[0]?.message?.content || '';
+  const makeRequest = async (modelId: string) => {
+    return await groq.chat.completions.create({
+      model: modelId,
+      messages: [
+        {
+          role: 'system',
+          content: `You are a professional fact-checker and investigative journalist AI. Always respond in valid JSON format. All user-facing text in the JSON (such as summaries, explanations, claims, assessments, and findings) MUST be written in ${langName}.`,
+        },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.3,
+      max_tokens: 4096,
+      response_format: { type: 'json_object' },
+    });
+  };
+
+  try {
+    const result = await makeRequest(TEXT_MODEL);
+    return result.choices[0]?.message?.content || '';
+  } catch (error) {
+    const err = error as GroqError;
+    if (
+      err?.status === 429 ||
+      err?.message?.includes('429') ||
+      err?.message?.includes('rate_limit_exceeded')
+    ) {
+      console.warn(`Primary model ${TEXT_MODEL} rate limited. Falling back to llama-3.1-8b-instant...`);
+      try {
+        const fallbackResult = await makeRequest('llama-3.1-8b-instant');
+        return fallbackResult.choices[0]?.message?.content || '';
+      } catch (fallbackError) {
+        console.error('Fallback model llama-3.1-8b-instant also failed:', fallbackError);
+        throw error;
+      }
+    }
+    throw error;
+  }
 }
 
 /**
@@ -102,29 +130,54 @@ export async function analyzeImage(
   const prompt = getImageAnalysisPrompt();
   const langName = getLanguageName(languageCode);
 
-  const result = await groq.chat.completions.create({
-    model: VISION_MODEL,
-    messages: [
-      {
-        role: 'system',
-        content: `You are an expert AI image analyzer. Always respond in valid JSON format. All user-facing text in the JSON (such as summary/explanations) MUST be written in ${langName}.`,
-      },
-      {
-        role: 'user',
-        content: [
-          { type: 'text', text: prompt },
-          {
-            type: 'image_url',
-            image_url: {
-              url: `data:${mimeType};base64,${imageBase64}`,
+  const makeRequest = async (modelId: string) => {
+    return await groq.chat.completions.create({
+      model: modelId,
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert AI image analyzer. Always respond in valid JSON format. All user-facing text in the JSON (such as summary/explanations) MUST be written in ${langName}.`,
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType};base64,${imageBase64}`,
+              },
             },
-          },
-        ],
-      },
-    ],
-    temperature: 0.3,
-    max_tokens: 4096,
-  });
+          ],
+        },
+      ],
+      temperature: 0.3,
+      max_tokens: 4096,
+      response_format: { type: 'json_object' },
+    });
+  };
+
+  let result;
+  try {
+    result = await makeRequest(VISION_MODEL);
+  } catch (error) {
+    const err = error as GroqError;
+    if (
+      err?.status === 429 ||
+      err?.message?.includes('429') ||
+      err?.message?.includes('rate_limit_exceeded')
+    ) {
+      console.warn(`Vision model ${VISION_MODEL} rate limited. Falling back to qwen/qwen3.6-27b...`);
+      try {
+        result = await makeRequest('qwen/qwen3.6-27b');
+      } catch (fallbackError) {
+        console.error('Fallback vision model qwen/qwen3.6-27b also failed:', fallbackError);
+        throw error;
+      }
+    } else {
+      throw error;
+    }
+  }
 
   const text = result.choices[0]?.message?.content || '';
   const parsed = safeJsonParse<ImageAnalysisResult>(text);
