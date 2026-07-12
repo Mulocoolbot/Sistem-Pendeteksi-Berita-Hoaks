@@ -6,7 +6,9 @@ import InputPanel from '@/components/InputPanel';
 import AnalysisTimeline from '@/components/AnalysisTimeline';
 import ResultCard from '@/components/ResultCard';
 import EvidenceList from '@/components/EvidenceList';
+import LanguageSelector from '@/components/LanguageSelector';
 import type { InvestigationReport, AnalysisStep } from '@/lib/types';
+import { TRANSLATIONS, type LanguageCode } from '@/lib/utils/translations';
 
 // Steps to cycle through during analysis (simulated progression)
 const ANALYSIS_STEPS: AnalysisStep[] = [
@@ -19,11 +21,14 @@ const ANALYSIS_STEPS: AnalysisStep[] = [
 ];
 
 export default function HomePage() {
+  const [language, setLanguage] = useState<LanguageCode>('id');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentStep, setCurrentStep] = useState<AnalysisStep>('idle');
   const [report, setReport] = useState<InvestigationReport | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const stepIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const t = TRANSLATIONS[language];
 
   // Cleanup interval on unmount
   useEffect(() => {
@@ -101,13 +106,20 @@ export default function HomePage() {
   );
 
   return (
-    <main>
+    <main style={{ position: 'relative' }}>
       <div className="container">
+        {/* Language Selector */}
+        <LanguageSelector
+          currentLanguage={language}
+          onLanguageChange={(lang) => setLanguage(lang)}
+        />
+
         {/* Hero Section */}
-        <HeroSection />
+        <HeroSection language={language} />
 
         {/* Input Panel */}
         <InputPanel
+          language={language}
           onAnalysisStart={handleAnalysisStart}
           onAnalysisComplete={handleAnalysisComplete}
           onAnalysisError={handleAnalysisError}
@@ -117,15 +129,15 @@ export default function HomePage() {
 
         {/* Analysis Timeline (shown during analysis) */}
         {isAnalyzing && currentStep !== 'idle' && (
-          <AnalysisTimeline currentStep={currentStep} />
+          <AnalysisTimeline currentStep={currentStep} language={language} />
         )}
 
         {/* Results */}
         <div ref={resultRef}>
           {report && (
             <>
-              <ResultCard report={report} />
-              <EvidenceList report={report} />
+              <ResultCard report={report} language={language} />
+              <EvidenceList report={report} language={language} />
 
               {/* Footer */}
               <footer
@@ -140,11 +152,10 @@ export default function HomePage() {
                 }}
               >
                 <p style={{ marginBottom: '0.5rem' }}>
-                  ⚠️ Sistem ini menggunakan AI dan tidak 100% akurat.
-                  Selalu verifikasi informasi dari sumber terpercaya.
+                  ⚠️ {t.disclaimer}
                 </p>
                 <p>
-                  Powered by Groq AI (Llama) • Google Fact Check API • Google Custom Search
+                  {t.poweredBy}
                 </p>
               </footer>
             </>

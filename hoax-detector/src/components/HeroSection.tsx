@@ -1,44 +1,44 @@
-'use client';
-
 import styles from './HeroSection.module.css';
+import { TRANSLATIONS, type LanguageCode } from '@/lib/utils/translations';
 
-export default function HeroSection() {
+interface HeroSectionProps {
+  language: LanguageCode;
+}
+
+export default function HeroSection({ language }: HeroSectionProps) {
+  const t = TRANSLATIONS[language];
+
   return (
     <section className={styles.hero}>
       <div className={styles.badge}>
         <span className={styles.badgeDot} />
-        AI-Powered Fact Checker
+        {t.badge}
       </div>
 
       <h1 className={styles.title}>
-        Deteksi{' '}
-        <span className={styles.titleGradient}>Berita Hoaks</span>
+        {t.titleMain}
         <br />
-        dalam Hitungan Detik
+        <span className={styles.titleGradient}>{t.titleSub}</span>
       </h1>
 
-      <p className={styles.subtitle}>
-        Masukkan URL berita atau upload gambar berita yang mencurigakan.
-        Sistem AI kami akan menganalisis, mencari sumber terpercaya,
-        dan memberikan investigasi mendalam tentang keaslian berita tersebut.
-      </p>
+      <p className={styles.subtitle}>{t.subtitle}</p>
 
       <div className={styles.features}>
         <div className={styles.feature}>
           <span className={styles.featureIcon}>🔗</span>
-          Analisis URL
+          {t.featureUrl}
         </div>
         <div className={styles.feature}>
           <span className={styles.featureIcon}>🖼️</span>
-          Deteksi Gambar
+          {t.featureImg}
         </div>
         <div className={styles.feature}>
           <span className={styles.featureIcon}>🌐</span>
-          Multi-Bahasa
+          {t.featureLang}
         </div>
         <div className={styles.feature}>
           <span className={styles.featureIcon}>🤖</span>
-          Groq AI
+          {t.featureEngine}
         </div>
       </div>
     </section>

@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { imageBase64, mimeType } = body;
+    const { imageBase64, mimeType, language = 'id' } = body;
 
     // Validate input
     if (!imageBase64 || !mimeType) {
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     // ── Step 1: Analyze image with Gemini Vision ──────────
     console.log('[1/6] Analyzing image with Gemini Vision...');
-    const imageResult = await analyzeImage(imageBase64, mimeType);
+    const imageResult = await analyzeImage(imageBase64, mimeType, language);
 
     if (!imageResult.extractedText || imageResult.extractedText.length < 10) {
       return NextResponse.json<ApiResponse<null>>(
@@ -52,11 +52,11 @@ export async function POST(request: NextRequest) {
 
     // ── Step 2: Extract claims ────────────────────────────
     console.log('[2/6] Extracting claims from image text...');
-    const claims = await extractClaims(articleTitle, articleContent);
+    const claims = await extractClaims(articleTitle, articleContent, language);
 
     // ── Step 3: Generate search queries ───────────────────
     console.log('[3/6] Generating search queries...');
-    const searchQueries = await generateSearchQueries(claims, articleTitle);
+    const searchQueries = await generateSearchQueries(claims, articleTitle, language);
 
     // ── Step 4: Parallel search + fact-check ──────────────
     console.log('[4/6] Searching & fact-checking...');
@@ -94,7 +94,8 @@ export async function POST(request: NextRequest) {
       articleContent,
       claims,
       factCheckFormatted,
-      combinedEvidence
+      combinedEvidence,
+      language
     );
 
     // Build the final report

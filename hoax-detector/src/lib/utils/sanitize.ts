@@ -77,12 +77,21 @@ export function delay(ms: number): Promise<void> {
 /**
  * Formats a date string to a readable format.
  */
-export function formatDate(dateStr: string | null): string {
-  if (!dateStr) return 'Tanggal tidak diketahui';
+export function formatDate(dateStr: string | null, language: string = 'id'): string {
+  if (!dateStr) return language === 'id' ? 'Tanggal tidak diketahui' : 'Unknown date';
   try {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return dateStr;
-    return date.toLocaleDateString('id-ID', {
+    const locale = 
+      language === 'id' ? 'id-ID' :
+      language === 'en' ? 'en-US' :
+      language === 'zh' ? 'zh-CN' :
+      language === 'ja' ? 'ja-JP' :
+      language === 'es' ? 'es-ES' :
+      language === 'hi' ? 'hi-IN' :
+      language === 'fr' ? 'fr-FR' :
+      language === 'pt' ? 'pt-PT' : 'en-US';
+    return date.toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

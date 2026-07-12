@@ -3,16 +3,19 @@
 import styles from './EvidenceList.module.css';
 import type { InvestigationReport } from '@/lib/types';
 import { getDomain } from '@/lib/utils/sanitize';
+import { TRANSLATIONS, type LanguageCode } from '@/lib/utils/translations';
 
 interface EvidenceListProps {
   report: InvestigationReport;
+  language: LanguageCode;
 }
 
-export default function EvidenceList({ report }: EvidenceListProps) {
+export default function EvidenceList({ report, language }: EvidenceListProps) {
+  const t = TRANSLATIONS[language];
   const { evidenceSources, factCheckResults } = report;
 
   const getStanceClass = (stance: string) => {
-    switch (stance) {
+    switch (stance.toLowerCase()) {
       case 'supports': return styles.stanceSupports;
       case 'contradicts': return styles.stanceContradicts;
       default: return styles.stanceNeutral;
@@ -20,7 +23,7 @@ export default function EvidenceList({ report }: EvidenceListProps) {
   };
 
   const getBadgeClass = (stance: string) => {
-    switch (stance) {
+    switch (stance.toLowerCase()) {
       case 'supports': return styles.badgeSupports;
       case 'contradicts': return styles.badgeContradicts;
       default: return styles.badgeNeutral;
@@ -28,10 +31,10 @@ export default function EvidenceList({ report }: EvidenceListProps) {
   };
 
   const getStanceLabel = (stance: string) => {
-    switch (stance) {
-      case 'supports': return 'Mendukung';
-      case 'contradicts': return 'Kontradiksi';
-      default: return 'Netral';
+    switch (stance.toLowerCase()) {
+      case 'supports': return t.stance_supports;
+      case 'contradicts': return t.stance_contradicts;
+      default: return t.stance_neutral;
     }
   };
 
@@ -40,7 +43,7 @@ export default function EvidenceList({ report }: EvidenceListProps) {
       {/* Fact Check Results (if any) */}
       {factCheckResults.length > 0 && (
         <div className={styles.factCheckSection}>
-          <h3 className={styles.sectionTitle}>🏛️ Hasil Fact-Check Resmi</h3>
+          <h3 className={styles.sectionTitle}>🏛️ {t.officialFactCheck}</h3>
           {factCheckResults.map((fc, i) => (
             <div key={i} className={styles.factCheckCard}>
               <div className={styles.factCheckClaim}>
@@ -54,7 +57,7 @@ export default function EvidenceList({ report }: EvidenceListProps) {
               {fc.reviews.map((review, j) => (
                 <div key={j} className={styles.factCheckReview}>
                   <span className={styles.reviewRating}>{review.rating}</span>
-                  <span>oleh {review.publisher}</span>
+                  <span>{language === 'id' ? 'oleh' : 'by'} {review.publisher}</span>
                   {review.url && (
                     <a
                       href={review.url}
@@ -62,7 +65,7 @@ export default function EvidenceList({ report }: EvidenceListProps) {
                       rel="noopener noreferrer"
                       className={styles.reviewLink}
                     >
-                      Baca →
+                      {language === 'id' ? 'Baca' : 'Read'} →
                     </a>
                   )}
                 </div>
@@ -75,7 +78,7 @@ export default function EvidenceList({ report }: EvidenceListProps) {
       {/* Evidence Sources */}
       <div className={styles.evidenceSection}>
         <h3 className={styles.sectionTitle}>
-          🌐 Sumber Berita yang Ditemukan ({evidenceSources.length})
+          🌐 {t.foundSources} ({evidenceSources.length})
         </h3>
 
         {evidenceSources.length > 0 ? (
@@ -107,7 +110,7 @@ export default function EvidenceList({ report }: EvidenceListProps) {
                   <div className={styles.evidenceSnippet}>{source.snippet}</div>
                   {source.similarityScore > 0 && (
                     <div className={styles.similarityBar}>
-                      <span>Kemiripan:</span>
+                      <span>{t.similarity}:</span>
                       <div className={styles.similarityTrack}>
                         <div
                           className={styles.similarityFill}
@@ -130,7 +133,7 @@ export default function EvidenceList({ report }: EvidenceListProps) {
           </div>
         ) : (
           <div className={styles.emptyState}>
-            Tidak ada sumber berita terkait yang ditemukan dari pencarian internet.
+            {t.noSources}
           </div>
         )}
       </div>

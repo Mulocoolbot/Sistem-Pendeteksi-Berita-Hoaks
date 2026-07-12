@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { url } = body;
+    const { url, language = 'id' } = body;
 
     // Validate input
     if (!url || !isValidUrl(url)) {
@@ -40,11 +40,11 @@ export async function POST(request: NextRequest) {
 
     // ── Step 2: Extract claims using AI ───────────────────
     console.log('[2/6] Extracting claims...');
-    const claims = await extractClaims(article.title, article.content);
+    const claims = await extractClaims(article.title, article.content, language);
 
     // ── Step 3: Generate search queries ───────────────────
     console.log('[3/6] Generating search queries...');
-    const searchQueries = await generateSearchQueries(claims, article.title);
+    const searchQueries = await generateSearchQueries(claims, article.title, language);
 
     // ── Step 4: Parallel search + fact-check ──────────────
     console.log('[4/6] Searching & fact-checking...');
@@ -87,7 +87,8 @@ export async function POST(request: NextRequest) {
       article.content,
       claims,
       factCheckFormatted,
-      combinedEvidence
+      combinedEvidence,
+      language
     );
 
     // Build the final report

@@ -28,17 +28,31 @@ function getGroqClient(): Groq {
   return new Groq({ apiKey });
 }
 
+function getLanguageName(code: string): string {
+  switch (code) {
+    case 'en': return 'English';
+    case 'zh': return 'Chinese (Mandarin)';
+    case 'ja': return 'Japanese';
+    case 'es': return 'Spanish';
+    case 'hi': return 'Hindi';
+    case 'fr': return 'French';
+    case 'pt': return 'Portuguese';
+    default: return 'Indonesian (Bahasa Indonesia)';
+  }
+}
+
 /**
  * Sends a text-only chat completion to Groq.
  */
-async function chatCompletion(prompt: string): Promise<string> {
+async function chatCompletion(prompt: string, languageCode: string = 'id'): Promise<string> {
   const groq = getGroqClient();
+  const langName = getLanguageName(languageCode);
   const result = await groq.chat.completions.create({
     model: TEXT_MODEL,
     messages: [
       {
         role: 'system',
-        content: 'You are a professional fact-checker and investigative journalist AI. Always respond in valid JSON format when asked.',
+        content: `You are a professional fact-checker and investigative journalist AI. Always respond in valid JSON format. All user-facing text in the JSON (such as summaries, explanations, claims, assessments, and findings) MUST be written in ${langName}.`,
       },
       { role: 'user', content: prompt },
     ],
@@ -55,10 +69,11 @@ async function chatCompletion(prompt: string): Promise<string> {
  */
 export async function extractClaims(
   title: string,
-  content: string
+  content: string,
+  languageCode: string = 'id'
 ): Promise<ClaimData[]> {
   const prompt = getClaimExtractionPrompt(title, content);
-  const text = await chatCompletion(prompt);
+  const text = await chatCompletion(prompt, languageCode);
 
   const parsed = safeJsonParse<{ claims: ClaimData[] }>(text);
   if (!parsed || !parsed.claims) {
@@ -80,14 +95,20 @@ export async function extractClaims(
  */
 export async function analyzeImage(
   imageBase64: string,
-  mimeType: string
+  mimeType: string,
+  languageCode: string = 'id'
 ): Promise<ImageAnalysisResult> {
   const groq = getGroqClient();
   const prompt = getImageAnalysisPrompt();
+  const langName = getLanguageName(languageCode);
 
   const result = await groq.chat.completions.create({
     model: VISION_MODEL,
     messages: [
+      {
+        role: 'system',
+        content: `You are an expert AI image analyzer. Always respond in valid JSON format. All user-facing text in the JSON (such as summary/explanations) MUST be written in ${langName}.`,
+      },
       {
         role: 'user',
         content: [
@@ -127,11 +148,12 @@ export async function analyzeImage(
  */
 export async function generateSearchQueries(
   claims: ClaimData[],
-  articleTitle: string
+  articleTitle: string,
+  languageCode: string = 'id'
 ): Promise<string[]> {
   const claimTexts = claims.map(c => c.claim);
   const prompt = getSearchQueryPrompt(claimTexts, articleTitle);
-  const text = await chatCompletion(prompt);
+  const text = await chatCompletion(prompt, languageCode);
 
   const parsed = safeJsonParse<{ queries: string[] }>(text);
   if (!parsed || !parsed.queries) {
@@ -149,7 +171,8 @@ export async function investigateCredibility(
   articleContent: string,
   claims: ClaimData[],
   factCheckData: string,
-  relatedArticles: string
+  relatedArticles: string,
+  languageCode: string = 'id'
 ): Promise<Record<string, unknown>> {
   const claimTexts = claims.map(c => c.claim);
   const prompt = getInvestigationPrompt(
@@ -160,7 +183,7 @@ export async function investigateCredibility(
     relatedArticles
   );
 
-  const text = await chatCompletion(prompt);
+  const text = await chatCompletion(prompt, languageCode);
 
   const parsed = safeJsonParse<Record<string, unknown>>(text);
   if (!parsed) {

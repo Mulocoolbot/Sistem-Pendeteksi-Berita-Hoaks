@@ -4,8 +4,10 @@ import { useState, useRef, useCallback } from 'react';
 import styles from './InputPanel.module.css';
 import { fileToBase64 } from '@/lib/utils/sanitize';
 import type { InvestigationReport } from '@/lib/types';
+import { TRANSLATIONS, type LanguageCode } from '@/lib/utils/translations';
 
 interface InputPanelProps {
+  language: LanguageCode;
   onAnalysisStart: () => void;
   onAnalysisComplete: (report: InvestigationReport) => void;
   onAnalysisError: (error: string) => void;
@@ -14,12 +16,14 @@ interface InputPanelProps {
 }
 
 export default function InputPanel({
+  language,
   onAnalysisStart,
   onAnalysisComplete,
   onAnalysisError,
   onStepChange,
   isAnalyzing,
 }: InputPanelProps) {
+  const t = TRANSLATIONS[language];
   const [activeTab, setActiveTab] = useState<'url' | 'image'>('url');
   const [url, setUrl] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -31,7 +35,7 @@ export default function InputPanel({
   // Handle URL submission
   const handleUrlSubmit = useCallback(async () => {
     if (!url.trim()) {
-      setError('Masukkan URL berita terlebih dahulu.');
+      setError(language === 'id' ? 'Masukkan URL berita terlebih dahulu.' : 'Please enter a news URL first.');
       return;
     }
 
@@ -43,28 +47,31 @@ export default function InputPanel({
       const response = await fetch('/api/analyze/url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({
+          url: url.trim(),
+          language,
+        }),
       });
 
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || 'Analisis gagal.');
+        throw new Error(data.error || (language === 'id' ? 'Analisis gagal.' : 'Analysis failed.'));
       }
 
       onStepChange('complete');
       onAnalysisComplete(data.data);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Terjadi kesalahan.';
+      const message = err instanceof Error ? err.message : (language === 'id' ? 'Terjadi kesalahan.' : 'An error occurred.');
       setError(message);
       onAnalysisError(message);
     }
-  }, [url, onAnalysisStart, onAnalysisComplete, onAnalysisError, onStepChange]);
+  }, [url, language, onAnalysisStart, onAnalysisComplete, onAnalysisError, onStepChange]);
 
   // Handle Image submission
   const handleImageSubmit = useCallback(async () => {
     if (!imageFile) {
-      setError('Upload gambar berita terlebih dahulu.');
+      setError(language === 'id' ? 'Upload gambar berita terlebih dahulu.' : 'Please upload a news image first.');
       return;
     }
 
@@ -81,32 +88,33 @@ export default function InputPanel({
         body: JSON.stringify({
           imageBase64: base64,
           mimeType: imageFile.type,
+          language,
         }),
       });
 
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || 'Analisis gambar gagal.');
+        throw new Error(data.error || (language === 'id' ? 'Analisis gambar gagal.' : 'Image analysis failed.'));
       }
 
       onStepChange('complete');
       onAnalysisComplete(data.data);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Terjadi kesalahan.';
+      const message = err instanceof Error ? err.message : (language === 'id' ? 'Terjadi kesalahan.' : 'An error occurred.');
       setError(message);
       onAnalysisError(message);
     }
-  }, [imageFile, onAnalysisStart, onAnalysisComplete, onAnalysisError, onStepChange]);
+  }, [imageFile, language, onAnalysisStart, onAnalysisComplete, onAnalysisError, onStepChange]);
 
   // Handle file selection
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith('image/')) {
-      setError('File harus berupa gambar (PNG, JPEG, atau WebP).');
+      setError(language === 'id' ? 'File harus berupa gambar (PNG, JPEG, atau WebP).' : 'File must be an image (PNG, JPEG, or WebP).');
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setError('Ukuran file maksimal 10MB.');
+      setError(language === 'id' ? 'Ukuran file maksimal 10MB.' : 'Maximum file size is 10MB.');
       return;
     }
     setError(null);
@@ -155,14 +163,14 @@ export default function InputPanel({
           onClick={() => { setActiveTab('url'); setError(null); }}
           disabled={isAnalyzing}
         >
-          🔗 URL Berita
+          🔗 {t.tabUrl}
         </button>
         <button
           className={`${styles.tab} ${activeTab === 'image' ? styles.tabActive : ''}`}
           onClick={() => { setActiveTab('image'); setError(null); }}
           disabled={isAnalyzing}
         >
-          🖼️ Gambar Berita
+          🖼️ {t.tabImg}
         </button>
       </div>
 
@@ -175,7 +183,7 @@ export default function InputPanel({
               <input
                 type="url"
                 className={styles.urlInput}
-                placeholder="Masukkan URL berita... (contoh: https://example.com/berita)"
+                placeholder={t.urlPlaceholder}
                 value={url}
                 onChange={e => setUrl(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !isAnalyzing && handleSubmit()}
@@ -200,10 +208,10 @@ export default function InputPanel({
             >
               <span className={styles.dropzoneIcon}>📷</span>
               <p className={styles.dropzoneText}>
-                <strong>Klik untuk upload</strong> atau seret gambar ke sini
+                {t.dragText}
               </p>
               <p className={styles.dropzoneHint}>
-                PNG, JPEG, WebP — Maks 10MB
+                {t.dragSubtext}
               </p>
               <input
                 ref={fileInputRef}
@@ -241,7 +249,7 @@ export default function InputPanel({
                     setImagePreview(null);
                   }}
                 >
-                  ✕ Hapus
+                  ✕ {language === 'id' ? 'Hapus' : 'Remove'}
                 </button>
               )}
             </div>
@@ -262,11 +270,11 @@ export default function InputPanel({
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <path d="M21 12a9 9 0 11-6.219-8.56" />
               </svg>
-              Menganalisis...
+              {t.btnInvestigating}
             </>
           ) : (
             <>
-              🔍 Investigasi Sekarang
+              🔍 {t.btnInvestigate}
             </>
           )}
         </button>

@@ -3,62 +3,25 @@
 import { useMemo } from 'react';
 import styles from './AnalysisTimeline.module.css';
 import type { AnalysisStep } from '@/lib/types';
+import { TRANSLATIONS, type LanguageCode } from '@/lib/utils/translations';
 
 interface AnalysisTimelineProps {
   currentStep: AnalysisStep;
+  language: LanguageCode;
 }
 
 interface StepConfig {
-  id: AnalysisStep;
+  id: Exclude<AnalysisStep, 'idle' | 'complete' | 'error'>;
   icon: string;
-  activeIcon: string;
-  label: string;
-  description: string;
 }
 
 const STEPS: StepConfig[] = [
-  {
-    id: 'extracting',
-    icon: '📄',
-    activeIcon: '📄',
-    label: 'Mengekstrak Konten',
-    description: 'Membaca dan mengekstrak elemen dari input...',
-  },
-  {
-    id: 'analyzing-claims',
-    icon: '🧠',
-    activeIcon: '🧠',
-    label: 'Menganalisis Klaim',
-    description: 'AI mengidentifikasi klaim-klaim utama...',
-  },
-  {
-    id: 'searching',
-    icon: '🔍',
-    activeIcon: '🔍',
-    label: 'Mencari Berita Serupa',
-    description: 'Melacak sumber berita dari internet...',
-  },
-  {
-    id: 'fact-checking',
-    icon: '✅',
-    activeIcon: '✅',
-    label: 'Memeriksa Fact-Check',
-    description: 'Mengecek database fact-check resmi...',
-  },
-  {
-    id: 'comparing',
-    icon: '⚖️',
-    activeIcon: '⚖️',
-    label: 'Membandingkan Sumber',
-    description: 'Membandingkan dengan sumber terpercaya...',
-  },
-  {
-    id: 'generating-report',
-    icon: '📊',
-    activeIcon: '📊',
-    label: 'Menyusun Laporan',
-    description: 'Membuat laporan investigasi final...',
-  },
+  { id: 'extracting', icon: '📄' },
+  { id: 'analyzing-claims', icon: '🧠' },
+  { id: 'searching', icon: '🔍' },
+  { id: 'fact-checking', icon: '✅' },
+  { id: 'comparing', icon: '⚖️' },
+  { id: 'generating-report', icon: '📊' },
 ];
 
 const STEP_ORDER: AnalysisStep[] = [
@@ -70,14 +33,14 @@ const STEP_ORDER: AnalysisStep[] = [
   'generating-report',
 ];
 
-export default function AnalysisTimeline({ currentStep }: AnalysisTimelineProps) {
+export default function AnalysisTimeline({ currentStep, language }: AnalysisTimelineProps) {
+  const t = TRANSLATIONS[language];
+
   const currentIndex = useMemo(
     () => STEP_ORDER.indexOf(currentStep),
     [currentStep]
   );
 
-  // Simulate that the backend is doing steps 2-6 at once after "extracting"
-  // since it's a single API call, we animate through the steps
   const activeIndex = useMemo(() => {
     if (currentStep === 'complete') return STEPS.length;
     if (currentStep === 'error') return currentIndex;
@@ -99,13 +62,34 @@ export default function AnalysisTimeline({ currentStep }: AnalysisTimelineProps)
     return 'pending';
   };
 
+  // Localized label and description getter helper
+  const getStepDetails = (id: string) => {
+    switch (id) {
+      case 'extracting':
+        return { label: t.step_extracting, description: t.step_extracting_desc };
+      case 'analyzing-claims':
+        return { label: t.step_analyzing, description: t.step_analyzing_desc };
+      case 'searching':
+        return { label: t.step_searching, description: t.step_searching_desc };
+      case 'fact-checking':
+        return { label: t.step_factcheck, description: t.step_factcheck_desc };
+      case 'comparing':
+        return { label: t.step_comparing, description: t.step_comparing_desc };
+      case 'generating-report':
+        return { label: t.step_report, description: t.step_report_desc };
+      default:
+        return { label: '', description: '' };
+    }
+  };
+
   return (
     <div className={styles.timeline}>
-      <div className={styles.timelineTitle}>🔬 Investigasi Sedang Berlangsung...</div>
+      <div className={styles.timelineTitle}>🔬 {t.timelineTitle}</div>
 
       <div className={styles.steps}>
         {STEPS.map((step, index) => {
           const state = getStepState(index);
+          const { label, description } = getStepDetails(step.id);
           return (
             <div key={step.id} className={styles.step}>
               <div
@@ -133,10 +117,10 @@ export default function AnalysisTimeline({ currentStep }: AnalysisTimelineProps)
                     state === 'active' ? styles.stepLabelActive : ''
                   }`}
                 >
-                  {step.label}
+                  {label}
                 </div>
                 {state === 'active' && (
-                  <div className={styles.stepDescription}>{step.description}</div>
+                  <div className={styles.stepDescription}>{description}</div>
                 )}
               </div>
             </div>
@@ -153,8 +137,8 @@ export default function AnalysisTimeline({ currentStep }: AnalysisTimelineProps)
         </div>
         <div className={styles.progressText}>
           {currentStep === 'error'
-            ? 'Terjadi kesalahan'
-            : `${Math.round(progressPercent)}% selesai`}
+            ? t.error
+            : `${Math.round(progressPercent)}% ${t.complete.toLowerCase()}`}
         </div>
       </div>
     </div>
