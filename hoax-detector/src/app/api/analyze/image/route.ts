@@ -101,14 +101,31 @@ export async function POST(request: NextRequest) {
       language
     );
 
+    interface SourceEvaluation {
+      scrapedIndex?: number;
+      similarityScore?: number;
+      stance?: 'supports' | 'contradicts' | 'neutral';
+    }
+
+    interface InvestigationResult {
+      sourceEvaluations?: SourceEvaluation[];
+      overallVerdict?: string;
+      credibilityScore?: number;
+      confidenceLevel?: string;
+      summary?: string;
+      claimAssessments?: unknown[];
+      keyFindings?: string[];
+      redFlags?: string[];
+      positiveIndicators?: string[];
+    }
+
     // Build evidence sources from actual scraped articles & AI valuations
-    const sourceEvaluations = Array.isArray(investigation.sourceEvaluations)
-      ? investigation.sourceEvaluations
-      : [];
+    const resultData = investigation as unknown as InvestigationResult;
+    const sourceEvaluations = resultData.sourceEvaluations || [];
 
     const evidenceSources = relatedArticles.map((art, index) => {
       const evaluation = sourceEvaluations.find(
-        (e: any) => e.scrapedIndex === index + 1
+        (e) => e.scrapedIndex === index + 1
       );
       return {
         title: art.title,
@@ -119,7 +136,7 @@ export async function POST(request: NextRequest) {
         similarityScore: typeof evaluation?.similarityScore === 'number'
           ? evaluation.similarityScore
           : 0,
-        stance: (evaluation?.stance as any) || 'neutral',
+        stance: evaluation?.stance || 'neutral',
       };
     });
 

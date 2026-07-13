@@ -86,7 +86,8 @@ export default function HomePage() {
   );
 
   const handleAnalysisError = useCallback(
-    (_error: string) => {
+    (error: string) => {
+      console.error('Analysis error:', error);
       stopStepSimulation();
       setCurrentStep('error');
       setIsAnalyzing(false);
