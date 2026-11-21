@@ -45,7 +45,11 @@ export default function HomePage() {
           onClearError={clearError}
         />
 
-        <div aria-live="polite" aria-busy={isAnalyzing}>
+        <section
+          aria-live="polite"
+          aria-busy={isAnalyzing}
+          aria-label={t.timelineTitle}
+        >
           {isAnalyzing && currentStep !== 'idle' && (
             <AnalysisTimeline currentStep={currentStep} language={language} />
           )}
@@ -58,15 +62,13 @@ export default function HomePage() {
               </>
             )}
           </div>
-        </div>
+        </section>
       </main>
 
-      {report && (
-        <footer className="site-footer">
-          <p className="site-footer-disclaimer">{t.disclaimer}</p>
-          <p>{t.poweredBy}</p>
-        </footer>
-      )}
+      <footer className="site-footer">
+        <p className="site-footer-disclaimer">{t.disclaimer}</p>
+        <p>{t.poweredBy}</p>
+      </footer>
     </div>
   );
 }

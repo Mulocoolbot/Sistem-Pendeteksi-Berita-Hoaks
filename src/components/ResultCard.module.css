@@ -2,7 +2,7 @@
   max-width: 900px;
   margin: 0 auto var(--spacing-2xl);
   padding: var(--spacing-2xl);
-  background-color: var(--surface-primary);
+  background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-sm);
@@ -20,7 +20,7 @@
   padding: 0.5rem 1.5rem;
   border-radius: var(--radius-full);
   border: 1px solid transparent;
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: 1.25rem;
   font-weight: 700;
   margin-bottom: var(--spacing-lg);
@@ -28,27 +28,27 @@
 }
 
 .verdictBadgeDanger {
-  background-color: var(--status-danger-bg);
-  border-color: var(--status-danger-border);
-  color: var(--status-danger);
+  background-color: var(--status-hoax-bg);
+  border-color: var(--status-hoax-border);
+  color: var(--status-hoax);
 }
 
 .verdictBadgeSuccess {
-  background-color: var(--status-success-bg);
-  border-color: var(--status-success-border);
-  color: var(--status-success);
+  background-color: var(--status-verified-bg);
+  border-color: var(--status-verified-border);
+  color: var(--status-verified);
 }
 
 .verdictBadgeWarning {
-  background-color: var(--status-warning-bg);
-  border-color: var(--status-warning-border);
-  color: var(--status-warning);
+  background-color: var(--status-misleading-bg);
+  border-color: var(--status-misleading-border);
+  color: var(--status-misleading);
 }
 
 .verdictBadgeNeutral {
-  background-color: var(--status-neutral-bg);
-  border-color: var(--status-neutral-border);
-  color: var(--status-neutral);
+  background-color: var(--status-unverified-bg);
+  border-color: var(--status-unverified-border);
+  color: var(--status-unverified);
 }
 
 .articleTitle {
@@ -89,7 +89,7 @@
 
 .gaugeBg {
   fill: none;
-  stroke: var(--surface-tertiary);
+  stroke: var(--bg-surface-emphasis);
   stroke-width: 8;
 }
 
@@ -110,7 +110,7 @@
 }
 
 .gaugeScore {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: 2.5rem;
   font-weight: 800;
   line-height: 1;
@@ -150,21 +150,21 @@
 }
 
 .confidenceHigh {
-  background-color: var(--status-success-bg);
-  border-color: var(--status-success-border);
-  color: var(--status-success);
+  background-color: var(--status-verified-bg);
+  border-color: var(--status-verified-border);
+  color: var(--status-verified);
 }
 
 .confidenceMedium {
-  background-color: var(--status-warning-bg);
-  border-color: var(--status-warning-border);
-  color: var(--status-warning);
+  background-color: var(--status-misleading-bg);
+  border-color: var(--status-misleading-border);
+  color: var(--status-misleading);
 }
 
 .confidenceLow {
-  background-color: var(--status-danger-bg);
-  border-color: var(--status-danger-border);
-  color: var(--status-danger);
+  background-color: var(--status-hoax-bg);
+  border-color: var(--status-hoax-border);
+  color: var(--status-hoax);
 }
 
 .summary {
@@ -172,7 +172,7 @@
 }
 
 .sectionTitle {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -200,13 +200,13 @@
 }
 
 .redFlagsList {
-  background-color: var(--status-danger-bg);
-  border-color: var(--status-danger-border);
+  background-color: var(--status-hoax-bg);
+  border-color: var(--status-hoax-border);
 }
 
 .positiveList {
-  background-color: var(--status-success-bg);
-  border-color: var(--status-success-border);
+  background-color: var(--status-verified-bg);
+  border-color: var(--status-verified-border);
 }
 
 .findingsListTitle {
@@ -216,11 +216,11 @@
 }
 
 .findingsListTitle.red {
-  color: var(--status-danger);
+  color: var(--status-hoax);
 }
 
 .findingsListTitle.green {
-  color: var(--status-success);
+  color: var(--status-verified);
 }
 
 .findingsItems {
@@ -245,7 +245,7 @@
 
 .claimCard {
   padding: var(--spacing-lg);
-  background-color: var(--surface-secondary);
+  background-color: var(--bg-surface-muted);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   margin-bottom: var(--spacing-md);
@@ -279,27 +279,27 @@
 }
 
 .verdictHOAKS {
-  background-color: var(--status-danger-bg);
-  border-color: var(--status-danger-border);
-  color: var(--status-danger);
+  background-color: var(--status-hoax-bg);
+  border-color: var(--status-hoax-border);
+  color: var(--status-hoax);
 }
 
 .verdictFAKTA {
-  background-color: var(--status-success-bg);
-  border-color: var(--status-success-border);
-  color: var(--status-success);
+  background-color: var(--status-verified-bg);
+  border-color: var(--status-verified-border);
+  color: var(--status-verified);
 }
 
 .verdictMISLEADING {
-  background-color: var(--status-warning-bg);
-  border-color: var(--status-warning-border);
-  color: var(--status-warning);
+  background-color: var(--status-misleading-bg);
+  border-color: var(--status-misleading-border);
+  color: var(--status-misleading);
 }
 
 .verdictUNKNOWN {
-  background-color: var(--status-neutral-bg);
-  border-color: var(--status-neutral-border);
-  color: var(--status-neutral);
+  background-color: var(--status-unverified-bg);
+  border-color: var(--status-unverified-border);
+  color: var(--status-unverified);
 }
 
 .claimExplanation {

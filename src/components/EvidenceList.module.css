@@ -4,7 +4,7 @@
 }
 
 .sectionTitle {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -20,7 +20,7 @@
   display: flex;
   gap: var(--spacing-md);
   padding: var(--spacing-lg);
-  background-color: var(--surface-primary);
+  background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
@@ -31,8 +31,13 @@
 
 .evidenceCard:hover {
   border-color: var(--border-strong);
-  background-color: var(--surface-hover);
+  background-color: var(--bg-surface-hover);
   text-decoration: none;
+}
+
+.evidenceCard:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
 }
 
 .stanceIndicator {
@@ -42,11 +47,11 @@
 }
 
 .stanceSupports {
-  background-color: var(--status-success);
+  background-color: var(--status-verified);
 }
 
 .stanceContradicts {
-  background-color: var(--status-danger);
+  background-color: var(--status-hoax);
 }
 
 .stanceNeutral {
@@ -86,21 +91,21 @@
 }
 
 .badgeSupports {
-  background-color: var(--status-success-bg);
-  border-color: var(--status-success-border);
-  color: var(--status-success);
+  background-color: var(--status-verified-bg);
+  border-color: var(--status-verified-border);
+  color: var(--status-verified);
 }
 
 .badgeContradicts {
-  background-color: var(--status-danger-bg);
-  border-color: var(--status-danger-border);
-  color: var(--status-danger);
+  background-color: var(--status-hoax-bg);
+  border-color: var(--status-hoax-border);
+  color: var(--status-hoax);
 }
 
 .badgeNeutral {
-  background-color: var(--status-neutral-bg);
-  border-color: var(--status-neutral-border);
-  color: var(--status-neutral);
+  background-color: var(--status-unverified-bg);
+  border-color: var(--status-unverified-border);
+  color: var(--status-unverified);
 }
 
 .evidenceMeta {
@@ -143,7 +148,7 @@
   flex: 1;
   max-width: 100px;
   height: 4px;
-  background-color: var(--surface-tertiary);
+  background-color: var(--bg-surface-emphasis);
   border-radius: var(--radius-full);
   overflow: hidden;
 }
@@ -161,7 +166,7 @@
 
 .factCheckCard {
   padding: var(--spacing-lg);
-  background-color: var(--surface-primary);
+  background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
@@ -192,8 +197,8 @@
 
 .reviewRating {
   padding: 0.12rem 0.5rem;
-  background-color: var(--status-neutral-bg);
-  border: 1px solid var(--status-neutral-border);
+  background-color: var(--status-unverified-bg);
+  border: 1px solid var(--status-unverified-border);
   border-radius: var(--radius-sm);
   font-size: 0.75rem;
   font-weight: 600;
@@ -206,10 +211,15 @@
   font-weight: 500;
 }
 
+.reviewLink:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
 .emptyState {
   text-align: center;
   padding: var(--spacing-xl);
-  background-color: var(--surface-primary);
+  background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   color: var(--text-muted);
