@@ -1,10 +1,18 @@
-// ============================================================
-// Sanitization & Utility Functions
-// ============================================================
+const LOCALE_MAP: Record<string, string> = {
+  id: 'id-ID',
+  en: 'en-US',
+  zh: 'zh-CN',
+  ja: 'ja-JP',
+  es: 'es-ES',
+  hi: 'hi-IN',
+  fr: 'fr-FR',
+  pt: 'pt-PT',
+};
 
-/**
- * Validates if a string is a valid URL.
- */
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export function isValidUrl(str: string): boolean {
   try {
     const url = new URL(str);
@@ -14,9 +22,6 @@ export function isValidUrl(str: string): boolean {
   }
 }
 
-/**
- * Cleans HTML content, removing tags and normalizing whitespace.
- */
 export function stripHtml(html: string): string {
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -32,17 +37,6 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
-/**
- * Truncates text to a maximum length, adding ellipsis.
- */
-export function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength - 3) + '...';
-}
-
-/**
- * Extracts the domain from a URL.
- */
 export function getDomain(url: string): string {
   try {
     return new URL(url).hostname.replace('www.', '');
@@ -51,46 +45,29 @@ export function getDomain(url: string): string {
   }
 }
 
-/**
- * Safely parses JSON, returning null on failure.
- */
-export function safeJsonParse<T>(text: string): T | null {
+export function safeJsonParse<T>(
+  text: string,
+  validator?: (val: unknown) => val is T
+): T | null {
   try {
-    // Try to find JSON in the text (sometimes LLMs add extra text around JSON)
+    // LLMs sometimes wrap JSON in markdown fences or prose; extract the outermost object.
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as T;
-    }
-    return null;
+    if (!jsonMatch) return null;
+
+    const parsed: unknown = JSON.parse(jsonMatch[0]);
+    if (validator && !validator(parsed)) return null;
+    return parsed as T;
   } catch {
     return null;
   }
 }
 
-/**
- * Creates a delay promise.
- */
-export function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/**
- * Formats a date string to a readable format.
- */
 export function formatDate(dateStr: string | null, language: string = 'id'): string {
   if (!dateStr) return language === 'id' ? 'Tanggal tidak diketahui' : 'Unknown date';
   try {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return dateStr;
-    const locale = 
-      language === 'id' ? 'id-ID' :
-      language === 'en' ? 'en-US' :
-      language === 'zh' ? 'zh-CN' :
-      language === 'ja' ? 'ja-JP' :
-      language === 'es' ? 'es-ES' :
-      language === 'hi' ? 'hi-IN' :
-      language === 'fr' ? 'fr-FR' :
-      language === 'pt' ? 'pt-PT' : 'en-US';
+    const locale = LOCALE_MAP[language] || 'en-US';
     return date.toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
@@ -101,69 +78,24 @@ export function formatDate(dateStr: string | null, language: string = 'id'): str
   }
 }
 
-/**
- * Returns a color based on credibility score.
- */
 export function getScoreColor(score: number): string {
   if (score >= 70) return 'var(--accent-green)';
   if (score >= 40) return 'var(--accent-amber)';
   return 'var(--accent-red)';
 }
 
-/**
- * Returns a verdict badge configuration.
- */
-export function getVerdictConfig(verdict: string): {
-  label: string;
-  color: string;
-  gradient: string;
-  icon: string;
-} {
-  switch (verdict) {
-    case 'FAKTA':
-      return {
-        label: '✅ FAKTA',
-        color: 'var(--accent-green)',
-        gradient: 'var(--gradient-fact)',
-        icon: '✅',
-      };
-    case 'HOAKS':
-      return {
-        label: '❌ HOAKS',
-        color: 'var(--accent-red)',
-        gradient: 'var(--gradient-hoax)',
-        icon: '❌',
-      };
-    case 'MISLEADING':
-      return {
-        label: '⚠️ MENYESATKAN',
-        color: 'var(--accent-orange)',
-        gradient: 'var(--gradient-unknown)',
-        icon: '⚠️',
-      };
-    default:
-      return {
-        label: '🔍 BELUM TERVERIFIKASI',
-        color: 'var(--accent-amber)',
-        gradient: 'var(--gradient-unknown)',
-        icon: '🔍',
-      };
-  }
-}
-
-/**
- * Converts file to base64.
- */
 export function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      const result = reader.result as string;
-      // Remove the data URL prefix (e.g., "data:image/png;base64,")
-      const base64 = result.split(',')[1];
-      resolve(base64);
+      if (typeof reader.result !== 'string') {
+        reject(new Error('Failed to read file as base64 string'));
+        return;
+      }
+      const commaIndex = reader.result.indexOf(',');
+      resolve(commaIndex >= 0 ? reader.result.slice(commaIndex + 1) : reader.result);
     };
-    reader.onerror = reject;
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'));
     reader.readAsDataURL(file);
   });
 }

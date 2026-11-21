@@ -1,7 +1,3 @@
-// ============================================================
-// Google Fact Check API Service
-// ============================================================
-
 import axios from 'axios';
 import type { FactCheckResult, FactCheckReview } from '@/lib/types';
 
@@ -25,9 +21,6 @@ interface FactCheckApiResponse {
   }>;
 }
 
-/**
- * Searches for existing fact-checks for a given claim using Google Fact Check API.
- */
 export async function checkClaim(claim: string): Promise<FactCheckResult[]> {
   const apiKey = process.env.GOOGLE_FACT_CHECK_API_KEY;
   if (!apiKey) {
@@ -40,7 +33,7 @@ export async function checkClaim(claim: string): Promise<FactCheckResult[]> {
       params: {
         query: claim,
         key: apiKey,
-        languageCode: '', // Search all languages
+        languageCode: '',
       },
       timeout: 10000,
     });
@@ -49,7 +42,7 @@ export async function checkClaim(claim: string): Promise<FactCheckResult[]> {
       return [];
     }
 
-    return response.data.claims.map(c => ({
+    return response.data.claims.map((c) => ({
       text: c.text || claim,
       claimant: c.claimant || null,
       claimDate: c.claimDate || null,
@@ -63,21 +56,14 @@ export async function checkClaim(claim: string): Promise<FactCheckResult[]> {
         })
       ),
     }));
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Fact Check API error:', error);
     return [];
   }
 }
 
-/**
- * Checks multiple claims in parallel.
- */
-export async function checkMultipleClaims(
-  claims: string[]
-): Promise<FactCheckResult[]> {
-  const results = await Promise.allSettled(
-    claims.map(claim => checkClaim(claim))
-  );
+export async function checkMultipleClaims(claims: string[]): Promise<FactCheckResult[]> {
+  const results = await Promise.allSettled(claims.map((claim) => checkClaim(claim)));
 
   const allResults: FactCheckResult[] = [];
   for (const result of results) {
@@ -89,19 +75,13 @@ export async function checkMultipleClaims(
   return allResults;
 }
 
-/**
- * Formats fact-check results into a readable string for the AI prompt.
- */
 export function formatFactCheckResults(results: FactCheckResult[]): string {
   if (results.length === 0) return '';
 
   return results
     .map((r, i) => {
       const reviews = r.reviews
-        .map(
-          rev =>
-            `  - ${rev.publisher}: "${rev.rating}" (${rev.url})`
-        )
+        .map((rev) => `  - ${rev.publisher}: "${rev.rating}" (${rev.url})`)
         .join('\n');
       return `[${i + 1}] Claim: "${r.text}"
   Claimant: ${r.claimant || 'Unknown'}

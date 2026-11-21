@@ -1,8 +1,3 @@
-// ============================================================
-// Web Scraper Service — Article Content Extraction
-// Dengan anti-blocking headers dan fallback strategies
-// ============================================================
-
 import axios, { type AxiosRequestConfig } from 'axios';
 import * as cheerio from 'cheerio';
 import type { ArticleData } from '@/lib/types';
@@ -19,19 +14,16 @@ function getRandomUserAgent(): string {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
-/**
- * Builds realistic browser-like headers to avoid being blocked.
- */
 function getBrowserHeaders(url: string): Record<string, string> {
   const domain = getDomain(url);
   return {
     'User-Agent': getRandomUserAgent(),
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
     'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
     'Accept-Encoding': 'gzip, deflate, br',
-    'Referer': `https://www.google.com/search?q=site:${domain}`,
-    'DNT': '1',
-    'Connection': 'keep-alive',
+    Referer: `https://www.google.com/search?q=site:${domain}`,
+    DNT: '1',
+    Connection: 'keep-alive',
     'Upgrade-Insecure-Requests': '1',
     'Sec-Fetch-Dest': 'document',
     'Sec-Fetch-Mode': 'navigate',
@@ -41,78 +33,69 @@ function getBrowserHeaders(url: string): Record<string, string> {
   };
 }
 
-/**
- * Fetches HTML with retry logic and fallback strategies.
- */
+function formatErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 async function fetchHtml(url: string): Promise<string> {
   const config: AxiosRequestConfig = {
     headers: getBrowserHeaders(url),
     timeout: 20000,
     maxRedirects: 5,
-    // Accept all status codes to see what we get
     validateStatus: (status) => status < 500,
   };
 
-  // Attempt 1: Direct fetch
   try {
-    const response = await axios.get(url, config);
-    if (response.status === 200 && response.data) {
+    const response = await axios.get<string>(url, config);
+    if (response.status === 200 && typeof response.data === 'string' && response.data.length > 0) {
       return response.data;
     }
-  } catch (e) {
-    console.warn(`Direct fetch failed for ${url}:`, (e as Error).message);
+  } catch (error: unknown) {
+    console.warn(`Direct fetch failed for ${url}:`, formatErrorMessage(error));
   }
 
-  // Attempt 2: Try via Google Web Cache
   try {
     const cacheUrl = `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(url)}`;
-    const response = await axios.get(cacheUrl, {
+    const response = await axios.get<string>(cacheUrl, {
       ...config,
       headers: {
         ...getBrowserHeaders(cacheUrl),
-        'Referer': 'https://www.google.com/',
+        Referer: 'https://www.google.com/',
       },
     });
-    if (response.status === 200 && response.data) {
-      console.log(`Fetched via Google Cache: ${url}`);
+    if (response.status === 200 && typeof response.data === 'string' && response.data.length > 0) {
       return response.data;
     }
-  } catch {
-    console.warn(`Google cache fallback failed for ${url}`);
+  } catch (error: unknown) {
+    console.warn(`Google cache fallback failed for ${url}:`, formatErrorMessage(error));
   }
 
-  // Attempt 3: Try without some headers (simpler request)
   try {
-    const simpleResponse = await axios.get(url, {
+    const simpleResponse = await axios.get<string>(url, {
       headers: {
         'User-Agent': getRandomUserAgent(),
-        'Accept': 'text/html,*/*',
+        Accept: 'text/html,*/*',
       },
       timeout: 15000,
       maxRedirects: 5,
     });
-    if (simpleResponse.data) {
+    if (typeof simpleResponse.data === 'string' && simpleResponse.data.length > 0) {
       return simpleResponse.data;
     }
-  } catch {
-    // Fall through to final error
+  } catch (error: unknown) {
+    console.warn(`Simple fetch fallback failed for ${url}:`, formatErrorMessage(error));
   }
 
   throw new Error(`Tidak bisa mengambil konten dari ${getDomain(url)} setelah beberapa percobaan.`);
 }
 
-/**
- * Scrapes and extracts article content from a given URL.
- */
 export async function scrapeArticle(url: string): Promise<ArticleData> {
   try {
     const html = await fetchHtml(url);
     const $ = cheerio.load(html);
 
-    // Remove unwanted elements
     $('script, style, nav, footer, header, iframe, noscript, .ads, .advertisement, .sidebar, .comments, .related-posts, .social-share, .breadcrumb').remove();
 
-    // Extract metadata
     const title = extractTitle($);
     const content = extractContent($);
     const description = extractDescription($);
@@ -129,23 +112,19 @@ export async function scrapeArticle(url: string): Promise<ArticleData> {
       'meta[name="date"]',
       'time[datetime]',
     ]);
-    const siteName = extractMeta($, [
-      'meta[property="og:site_name"]',
-      'meta[name="application-name"]',
-    ]) || getDomain(url);
+    const siteName =
+      extractMeta($, ['meta[property="og:site_name"]', 'meta[name="application-name"]']) ||
+      getDomain(url);
     const imageUrl = extractMeta($, [
       'meta[property="og:image"]',
       'meta[name="twitter:image"]',
     ]);
-    const language = extractMeta($, [
-      'meta[property="og:locale"]',
-      'html[lang]',
-    ]) || $('html').attr('lang') || null;
+    const language =
+      extractMeta($, ['meta[property="og:locale"]', 'html[lang]']) ||
+      $('html').attr('lang') ||
+      null;
 
-    // Even if we only got metadata (title + description), that's OK
-    const finalContent = content.length > 50
-      ? content
-      : description || title;
+    const finalContent = content.length > 50 ? content : description || title;
 
     return {
       url,
@@ -158,15 +137,14 @@ export async function scrapeArticle(url: string): Promise<ArticleData> {
       imageUrl,
       language,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(`Failed to scrape ${url}:`, error);
-    throw new Error(`Gagal mengambil konten dari ${getDomain(url)}. Situs mungkin memblokir akses atau tidak tersedia.`);
+    throw new Error(
+      `Gagal mengambil konten dari ${getDomain(url)}. Situs mungkin memblokir akses atau tidak tersedia.`
+    );
   }
 }
 
-/**
- * Scrapes multiple URLs for comparison.
- */
 export async function scrapeMultipleArticles(
   urls: string[],
   maxArticles: number = 5
@@ -180,16 +158,13 @@ export async function scrapeMultipleArticles(
       if (article.content.length > 50) {
         results.push(article);
       }
-    } catch {
-      // Skip failed scrapes silently
-      continue;
+    } catch (error: unknown) {
+      console.warn(`Skipping failed scrape for ${url}:`, formatErrorMessage(error));
     }
   }
 
   return results;
 }
-
-// ── Helper Functions ────────────────────────────────────
 
 function extractTitle($: cheerio.CheerioAPI): string {
   const ogTitle = $('meta[property="og:title"]').attr('content');
@@ -206,7 +181,6 @@ function extractTitle($: cheerio.CheerioAPI): string {
 }
 
 function extractContent($: cheerio.CheerioAPI): string {
-  // Try common article selectors (includes Indonesian news sites)
   const selectors = [
     'article',
     '[itemprop="articleBody"]',
@@ -219,15 +193,15 @@ function extractContent($: cheerio.CheerioAPI): string {
     '.news-content',
     '#article-body',
     '.detail-text',
-    '.read__content',        // Kompas
-    '.detail__body-text',    // Detik
-    '.article__content',     // CNN Indonesia
-    '.text-cnn',             // CNN Indonesia alt
-    '.itp_bodycontent',      // Tribunnews
-    '.side-article',         // Merdeka
-    '.content-detail',       // Liputan6
-    '.article-content-body', // Tempo
-    '#content-body',         // Kumparan
+    '.read__content',
+    '.detail__body-text',
+    '.article__content',
+    '.text-cnn',
+    '.itp_bodycontent',
+    '.side-article',
+    '.content-detail',
+    '.article-content-body',
+    '#content-body',
   ];
 
   for (const selector of selectors) {
@@ -237,23 +211,21 @@ function extractContent($: cheerio.CheerioAPI): string {
         .find('p, h2, h3, h4, li')
         .map((_, elem) => $(elem).text().trim())
         .get()
-        .filter(t => t.length > 20)
+        .filter((t) => t.length > 20)
         .join('\n\n');
       if (text.length > 100) return text;
     }
   }
 
-  // Fallback: get all paragraph text from body
   const paragraphs = $('p')
     .map((_, elem) => $(elem).text().trim())
     .get()
-    .filter(t => t.length > 30);
+    .filter((t) => t.length > 30);
 
   if (paragraphs.length > 0) {
     return paragraphs.join('\n\n');
   }
 
-  // Last resort: get body text
   return stripHtml($('body').html() || '').substring(0, 5000);
 }
 

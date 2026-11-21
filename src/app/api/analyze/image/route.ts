@@ -1,97 +1,114 @@
-// ============================================================
-// API Route: Analyze Image — /api/analyze/image
-// ============================================================
-
 import { NextRequest, NextResponse } from 'next/server';
-import { analyzeImage, extractClaims, generateSearchQueries, investigateCredibility } from '@/lib/services/groq';
+import {
+  analyzeImage,
+  extractClaims,
+  generateSearchQueries,
+  investigateCredibility,
+} from '@/lib/services/groq';
 import { checkMultipleClaims, formatFactCheckResults } from '@/lib/services/factcheck';
-import { searchMultipleQueries, formatSearchResults } from '@/lib/services/search';
+import {
+  buildEvidenceSources,
+  formatSearchResults,
+  searchMultipleQueries,
+} from '@/lib/services/search';
 import { scrapeMultipleArticles } from '@/lib/services/scraper';
-import { getDomain } from '@/lib/utils/sanitize';
-import type { InvestigationReport, ApiResponse } from '@/lib/types';
+import { isRecord } from '@/lib/utils/sanitize';
+import type { AnalyzeImageRequest, ApiResponse, InvestigationReport } from '@/lib/types';
 
 export const maxDuration = 60;
+
+const ALLOWED_MIMES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/webp',
+  'image/gif',
+]);
+
+function parseAnalyzeImageRequest(body: unknown): AnalyzeImageRequest | null {
+  if (!isRecord(body)) {
+    return null;
+  }
+  if (typeof body.imageBase64 !== 'string' || typeof body.mimeType !== 'string') {
+    return null;
+  }
+  return {
+    imageBase64: body.imageBase64,
+    mimeType: body.mimeType,
+    language: typeof body.language === 'string' ? body.language : 'id',
+  };
+}
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const body = await request.json();
-    const { imageBase64, mimeType, language = 'id' } = body;
+    const rawBody: unknown = await request.json();
+    const parsedBody = parseAnalyzeImageRequest(rawBody);
 
-    // Validate input
-    if (!imageBase64 || !mimeType) {
+    if (!parsedBody || !parsedBody.imageBase64 || !parsedBody.mimeType) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Gambar tidak valid. Silakan upload ulang.' },
         { status: 400 }
       );
     }
 
-    // Validate mime type
-    const allowedMimes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
-    if (!allowedMimes.includes(mimeType)) {
+    const { imageBase64, mimeType, language = 'id' } = parsedBody;
+
+    if (!ALLOWED_MIMES.has(mimeType)) {
       return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: `Format gambar tidak didukung: ${mimeType}. Gunakan PNG, JPEG, atau WebP.` },
+        {
+          success: false,
+          error: `Format gambar tidak didukung: ${mimeType}. Gunakan PNG, JPEG, atau WebP.`,
+        },
         { status: 400 }
       );
     }
 
-    // ── Step 1: Analyze image with Gemini Vision ──────────
-    console.log('[1/6] Analyzing image with Gemini Vision...');
     const imageResult = await analyzeImage(imageBase64, mimeType, language);
 
     if (!imageResult.extractedText || imageResult.extractedText.length < 10) {
       return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: 'Tidak ada teks yang dapat diekstrak dari gambar. Pastikan gambar berisi teks berita yang jelas.' },
+        {
+          success: false,
+          error:
+            'Tidak ada teks yang dapat diekstrak dari gambar. Pastikan gambar berisi teks berita yang jelas.',
+        },
         { status: 422 }
       );
     }
 
-    // Use extracted text as the "article"
     const articleTitle = imageResult.summary || imageResult.extractedText.substring(0, 100);
     const articleContent = imageResult.extractedText;
 
-    // ── Step 2: Extract claims ────────────────────────────
-    console.log('[2/6] Extracting claims from image text...');
     const claims = await extractClaims(articleTitle, articleContent, language);
-
-    // ── Step 3: Generate search queries ───────────────────
-    console.log('[3/6] Generating search queries...');
     const searchQueries = await generateSearchQueries(claims, articleTitle, language);
-
-    // ── Step 4: Parallel search + fact-check ──────────────
-    console.log('[4/6] Searching & fact-checking...');
-    const claimTexts = claims.map(c => c.claim);
+    const claimTexts = claims.map((c) => c.claim);
 
     const [factCheckResults, searchResults] = await Promise.all([
       checkMultipleClaims(claimTexts),
       searchMultipleQueries(searchQueries),
     ]);
 
-    // ── Step 5: Scrape related articles for comparison ────
-    console.log('[5/6] Scraping related articles...');
-    const relatedUrls = searchResults.map(r => r.link);
-    const relatedArticles = await scrapeMultipleArticles(relatedUrls, 5); // Increased max from 3 to 5 for more sources
+    const relatedUrls = searchResults.map((r) => r.link);
+    const relatedArticles = await scrapeMultipleArticles(relatedUrls, 5);
 
-    // Format evidence for AI
     const factCheckFormatted = formatFactCheckResults(factCheckResults);
     const searchFormatted = formatSearchResults(searchResults);
-
-    const relatedFormatted = relatedArticles.length > 0
-      ? relatedArticles
-          .map(
-            (a, i) =>
-              `[Scraped ${i + 1}] "${a.title}" (${a.siteName})\n${a.content.substring(0, 500)}`
-          )
-          .join('\n\n')
-      : '';
+    const relatedFormatted =
+      relatedArticles.length > 0
+        ? relatedArticles
+            .map(
+              (a, i) =>
+                `[Scraped ${i + 1}] "${a.title}" (${a.siteName})\n${a.content.substring(0, 500)}`
+            )
+            .join('\n\n')
+        : '';
 
     const combinedEvidence = [searchFormatted, relatedFormatted]
       .filter(Boolean)
       .join('\n\n---\n\n');
 
-    // ── Step 6: AI Investigation ──────────────────────────
-    console.log('[6/6] Running AI investigation...');
     const investigation = await investigateCredibility(
       articleTitle,
       articleContent,
@@ -101,103 +118,39 @@ export async function POST(request: NextRequest) {
       language
     );
 
-    interface SourceEvaluation {
-      scrapedIndex?: number;
-      similarityScore?: number;
-      stance?: 'supports' | 'contradicts' | 'neutral';
-    }
+    const evidenceSources = buildEvidenceSources(
+      relatedArticles,
+      investigation.sourceEvaluations,
+      searchResults
+    );
 
-    interface InvestigationResult {
-      sourceEvaluations?: SourceEvaluation[];
-      overallVerdict?: string;
-      credibilityScore?: number;
-      confidenceLevel?: string;
-      summary?: string;
-      claimAssessments?: unknown[];
-      keyFindings?: string[];
-      redFlags?: string[];
-      positiveIndicators?: string[];
-    }
-
-    // Build evidence sources from actual scraped articles & AI valuations
-    const resultData = investigation as unknown as InvestigationResult;
-    const sourceEvaluations = resultData.sourceEvaluations || [];
-
-    const evidenceSources = relatedArticles.map((art, index) => {
-      const evaluation = sourceEvaluations.find(
-        (e) => e.scrapedIndex === index + 1
-      );
-      return {
-        title: art.title,
-        url: art.url,
-        siteName: art.siteName || getDomain(art.url),
-        snippet: art.description || art.content.substring(0, 160),
-        publishedDate: art.publishedDate,
-        similarityScore: typeof evaluation?.similarityScore === 'number'
-          ? evaluation.similarityScore
-          : 0,
-        stance: evaluation?.stance || 'neutral',
-      };
-    });
-
-    // Fallback to Google search items if no related articles could be scraped
-    if (evidenceSources.length === 0 && searchResults.length > 0) {
-      searchResults.forEach(r => {
-        evidenceSources.push({
-          title: r.title,
-          url: r.link,
-          siteName: r.displayLink,
-          snippet: r.snippet,
-          publishedDate: r.datePublished,
-          similarityScore: 0,
-          stance: 'neutral',
-        });
-      });
-    }
-
-    // Build the final report
     const report: InvestigationReport = {
       inputType: 'image',
       inputValue: `[Image: ${imageResult.contentType}]${imageResult.detectedSource ? ` from ${imageResult.detectedSource}` : ''}`,
       articleTitle,
       articleContent: articleContent.substring(0, 2000),
-
-      overallVerdict: (investigation.overallVerdict as InvestigationReport['overallVerdict']) || 'BELUM TERVERIFIKASI',
-      credibilityScore: typeof investigation.credibilityScore === 'number'
-        ? investigation.credibilityScore
-        : 50,
-      confidenceLevel: (investigation.confidenceLevel as InvestigationReport['confidenceLevel']) || 'low',
-
-      summary: (investigation.summary as string) || 'Analisis tidak tersedia.',
-      claimAssessments: Array.isArray(investigation.claimAssessments)
-        ? investigation.claimAssessments as InvestigationReport['claimAssessments']
-        : [],
+      overallVerdict: investigation.overallVerdict,
+      credibilityScore: investigation.credibilityScore,
+      confidenceLevel: investigation.confidenceLevel,
+      summary: investigation.summary,
+      claimAssessments: investigation.claimAssessments,
       evidenceSources,
       factCheckResults,
-
       analyzedAt: new Date().toISOString(),
       analysisTimeMs: Date.now() - startTime,
-
-      keyFindings: Array.isArray(investigation.keyFindings)
-        ? investigation.keyFindings as string[]
-        : [],
-      redFlags: Array.isArray(investigation.redFlags)
-        ? investigation.redFlags as string[]
-        : [],
-      positiveIndicators: Array.isArray(investigation.positiveIndicators)
-        ? investigation.positiveIndicators as string[]
-        : [],
+      keyFindings: investigation.keyFindings,
+      redFlags: investigation.redFlags,
+      positiveIndicators: investigation.positiveIndicators,
     };
-
-    console.log(`Image analysis complete in ${report.analysisTimeMs}ms. Verdict: ${report.overallVerdict}`);
 
     return NextResponse.json<ApiResponse<InvestigationReport>>(
       { success: true, data: report },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Image analysis error:', error);
-    const message = error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak terduga.';
+    const message =
+      error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak terduga.';
 
     return NextResponse.json<ApiResponse<null>>(
       { success: false, error: message },
