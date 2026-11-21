@@ -2,14 +2,14 @@
   max-width: 560px;
   margin: 0 auto var(--spacing-3xl);
   padding: var(--spacing-xl);
-  background-color: var(--surface-primary);
+  background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
 
 .timelineTitle {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: 1.1rem;
   font-weight: 700;
   text-align: center;
@@ -61,27 +61,27 @@
 }
 
 .stepPending {
-  background-color: var(--surface-secondary);
+  background-color: var(--bg-surface-muted);
   border: 1px solid var(--border-default);
   color: var(--text-muted);
 }
 
 .stepActive {
-  background-color: var(--surface-primary);
+  background-color: var(--bg-surface);
   border: 2px solid var(--accent-primary);
   color: var(--accent-primary);
 }
 
 .stepComplete {
-  background-color: var(--status-success-bg);
-  border: 1px solid var(--status-success-border);
-  color: var(--status-success);
+  background-color: var(--status-verified-bg);
+  border: 1px solid var(--status-verified-border);
+  color: var(--status-verified);
 }
 
 .stepError {
-  background-color: var(--status-danger-bg);
-  border: 1px solid var(--status-danger-border);
-  color: var(--status-danger);
+  background-color: var(--status-hoax-bg);
+  border: 1px solid var(--status-hoax-border);
+  color: var(--status-hoax);
 }
 
 .stepContent {
@@ -111,7 +111,7 @@
 }
 
 .stepLineComplete::before {
-  background-color: var(--status-success-border);
+  background-color: var(--status-verified-border);
 }
 
 .stepLineActive::before {
@@ -119,7 +119,7 @@
 }
 
 .stepLineError::before {
-  background-color: var(--status-danger-border);
+  background-color: var(--status-hoax-border);
 }
 
 .spinnerSvg {
@@ -142,7 +142,7 @@
 .progressBar {
   width: 100%;
   height: 6px;
-  background-color: var(--surface-tertiary);
+  background-color: var(--bg-surface-emphasis);
   border-radius: var(--radius-full);
   overflow: hidden;
   margin-bottom: var(--spacing-sm);

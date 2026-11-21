@@ -15,6 +15,7 @@ export default function LanguageSelector({
 }: LanguageSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const activeLang = LANGUAGES.find((l) => l.code === currentLanguage) || LANGUAGES[0];
 
@@ -25,16 +26,26 @@ export default function LanguageSelector({
       }
     }
 
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+        buttonRef.current?.focus();
+      }
+    }
+
     document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [isOpen]);
 
   return (
     <nav className={styles.wrapper} aria-label="Language selection">
       <div className={styles.selectorContainer} ref={dropdownRef}>
         <button
+          ref={buttonRef}
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
           className={styles.selectorButton}

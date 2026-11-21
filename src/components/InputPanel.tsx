@@ -134,13 +134,26 @@ export default function InputPanel({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const displayedError = error || externalError;
+  const isSubmitDisabled = isAnalyzing || (activeTab === 'url' ? !url.trim() : !imageFile);
+  const tabListLabel = language === 'id' ? 'Metode input' : 'Input method';
+  const removeButtonLabel = imageFile
+    ? language === 'id'
+      ? `Hapus ${imageFile.name}`
+      : `Remove ${imageFile.name}`
+    : language === 'id'
+      ? 'Hapus gambar'
+      : 'Remove image';
+
   return (
     <section className={styles.panel} aria-label={activeTab === 'url' ? t.tabUrl : t.tabImg}>
-      <div className={styles.tabBar} role="tablist">
+      <div className={styles.tabBar} role="tablist" aria-label={tabListLabel}>
         <button
+          id="tab-url"
           type="button"
           role="tab"
           aria-selected={activeTab === 'url'}
+          aria-controls="panel-url"
           className={`${styles.tab} ${activeTab === 'url' ? styles.tabActive : ''}`}
           onClick={() => {
             setActiveTab('url');
@@ -152,9 +165,11 @@ export default function InputPanel({
           {t.tabUrl}
         </button>
         <button
+          id="tab-image"
           type="button"
           role="tab"
           aria-selected={activeTab === 'image'}
+          aria-controls="panel-image"
           className={`${styles.tab} ${activeTab === 'image' ? styles.tabActive : ''}`}
           onClick={() => {
             setActiveTab('image');
@@ -169,7 +184,7 @@ export default function InputPanel({
 
       <form onSubmit={handleSubmit} noValidate>
         {activeTab === 'url' && (
-          <div className={styles.inputGroup}>
+          <div id="panel-url" role="tabpanel" aria-labelledby="tab-url" className={styles.inputGroup}>
             <label htmlFor="url-input" className={styles.fieldLabel}>
               {t.tabUrl}
             </label>
@@ -186,22 +201,25 @@ export default function InputPanel({
         )}
 
         {activeTab === 'image' && (
-          <div className={styles.inputGroup}>
-            <label htmlFor="image-input" className="sr-only">
+          <div id="panel-image" role="tabpanel" aria-labelledby="tab-image" className={styles.inputGroup}>
+            <label htmlFor="image-input" className={styles.fieldLabel}>
               {t.tabImg}
             </label>
             {!imageFile ? (
               <div
                 role="button"
-                tabIndex={0}
+                tabIndex={isAnalyzing ? -1 : 0}
                 aria-label={t.dragText}
+                aria-disabled={isAnalyzing}
                 className={`${styles.dropzone} ${isDragging ? styles.dropzoneActive : ''}`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  if (!isAnalyzing) fileInputRef.current?.click();
+                }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
+                  if (!isAnalyzing && (e.key === 'Enter' || e.key === ' ')) {
                     e.preventDefault();
                     fileInputRef.current?.click();
                   }
@@ -218,6 +236,7 @@ export default function InputPanel({
                     const file = e.target.files?.[0];
                     if (file) handleFileSelect(file);
                   }}
+                  disabled={isAnalyzing}
                   id="image-input"
                 />
               </div>
@@ -239,6 +258,7 @@ export default function InputPanel({
                   <button
                     type="button"
                     className={styles.previewRemove}
+                    aria-label={removeButtonLabel}
                     onClick={() => {
                       setImageFile(null);
                       setImagePreview(null);
@@ -256,7 +276,8 @@ export default function InputPanel({
           <button
             type="submit"
             className={`btn btn-primary ${styles.submitBtn}`}
-            disabled={isAnalyzing || (activeTab === 'url' ? !url.trim() : !imageFile)}
+            disabled={isSubmitDisabled}
+            aria-busy={isAnalyzing}
             id="submit-btn"
           >
             {isAnalyzing ? (
@@ -280,14 +301,11 @@ export default function InputPanel({
         </div>
       </form>
 
-      {(() => {
-        const displayedError = error || externalError;
-        return displayedError ? (
-          <div className={styles.error} role="alert" aria-live="assertive">
-            {displayedError}
-          </div>
-        ) : null;
-      })()}
+      {displayedError && (
+        <div className={styles.error} role="alert" aria-live="assertive">
+          {displayedError}
+        </div>
+      )}
     </section>
   );
 }

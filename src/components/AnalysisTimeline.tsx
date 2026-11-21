@@ -21,6 +21,60 @@ const STEPS: TimelineStepId[] = [
   'generating-report',
 ];
 
+type StepState = 'pending' | 'active' | 'complete' | 'error';
+
+function getStepLineClass(state: StepState): string {
+  switch (state) {
+    case 'complete':
+      return styles.stepLineComplete;
+    case 'active':
+      return styles.stepLineActive;
+    case 'error':
+      return styles.stepLineError;
+    default:
+      return '';
+  }
+}
+
+function getStepIconClass(state: StepState): string {
+  switch (state) {
+    case 'complete':
+      return styles.stepComplete;
+    case 'active':
+      return styles.stepActive;
+    case 'error':
+      return styles.stepError;
+    default:
+      return styles.stepPending;
+  }
+}
+
+function getStepLabelClass(state: StepState): string {
+  if (state === 'pending') return styles.stepLabelPending;
+  if (state === 'active') return styles.stepLabelActive;
+  return '';
+}
+
+function renderStepIndicator(state: StepState, index: number) {
+  if (state === 'active') {
+    return (
+      <svg className={styles.spinnerSvg} viewBox="0 0 50 50">
+        <circle
+          className={styles.spinnerPath}
+          cx="25"
+          cy="25"
+          r="20"
+          fill="none"
+          strokeWidth="5"
+        />
+      </svg>
+    );
+  }
+  if (state === 'complete') return 'OK';
+  if (state === 'error') return '!';
+  return index + 1;
+}
+
 export default function AnalysisTimeline({ currentStep, language }: AnalysisTimelineProps) {
   const t = TRANSLATIONS[language];
 
@@ -84,22 +138,9 @@ export default function AnalysisTimeline({ currentStep, language }: AnalysisTime
         {STEPS.map((stepId, index) => {
           const state = getStepState(index);
           const { label, description } = getStepDetails(stepId);
-          const lineClass =
-            state === 'complete'
-              ? styles.stepLineComplete
-              : state === 'active'
-                ? styles.stepLineActive
-                : state === 'error'
-                  ? styles.stepLineError
-                  : '';
-          const iconClass =
-            state === 'complete'
-              ? styles.stepComplete
-              : state === 'active'
-                ? styles.stepActive
-                : state === 'error'
-                  ? styles.stepError
-                  : styles.stepPending;
+          const lineClass = getStepLineClass(state);
+          const iconClass = getStepIconClass(state);
+          const labelClass = getStepLabelClass(state);
 
           return (
             <li
@@ -108,37 +149,10 @@ export default function AnalysisTimeline({ currentStep, language }: AnalysisTime
               aria-current={state === 'active' ? 'step' : undefined}
             >
               <div className={`${styles.stepIcon} ${iconClass}`} aria-hidden="true">
-                {state === 'active' ? (
-                  <svg className={styles.spinnerSvg} viewBox="0 0 50 50">
-                    <circle
-                      className={styles.spinnerPath}
-                      cx="25"
-                      cy="25"
-                      r="20"
-                      fill="none"
-                      strokeWidth="5"
-                    />
-                  </svg>
-                ) : state === 'complete' ? (
-                  'OK'
-                ) : state === 'error' ? (
-                  '!'
-                ) : (
-                  index + 1
-                )}
+                {renderStepIndicator(state, index)}
               </div>
               <div className={styles.stepContent}>
-                <div
-                  className={`${styles.stepLabel} ${
-                    state === 'pending'
-                      ? styles.stepLabelPending
-                      : state === 'active'
-                        ? styles.stepLabelActive
-                        : ''
-                  }`}
-                >
-                  {label}
-                </div>
+                <div className={`${styles.stepLabel} ${labelClass}`}>{label}</div>
                 {state === 'active' && (
                   <div className={styles.stepDescription}>{description}</div>
                 )}

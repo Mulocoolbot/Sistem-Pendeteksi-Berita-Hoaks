@@ -7,10 +7,11 @@ interface HeroSectionProps {
 
 export default function HeroSection({ language }: HeroSectionProps) {
   const t = TRANSLATIONS[language];
+  const featuresLabel = language === 'id' ? 'Fitur utama' : 'Key features';
 
   return (
     <section className={styles.hero} aria-labelledby="hero-heading">
-      <div className={styles.badge}>{t.badge}</div>
+      <p className={styles.badge}>{t.badge}</p>
 
       <h1 id="hero-heading" className={styles.title}>
         {t.titleMain}
@@ -20,7 +21,7 @@ export default function HeroSection({ language }: HeroSectionProps) {
 
       <p className={styles.subtitle}>{t.subtitle}</p>
 
-      <ul className={styles.features}>
+      <ul className={styles.features} aria-label={featuresLabel}>
         <li className={styles.feature}>{t.featureUrl}</li>
         <li className={styles.feature}>{t.featureImg}</li>
         <li className={styles.feature}>{t.featureLang}</li>

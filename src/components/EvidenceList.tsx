@@ -10,6 +10,12 @@ interface EvidenceListProps {
   language: LanguageCode;
 }
 
+function getSimilarityColor(score: number): string {
+  if (score > 70) return 'var(--status-verified)';
+  if (score > 40) return 'var(--status-misleading)';
+  return 'var(--accent-link)';
+}
+
 export default function EvidenceList({ report, language }: EvidenceListProps) {
   const t = TRANSLATIONS[language];
   const { evidenceSources, factCheckResults } = report;
@@ -123,12 +129,7 @@ export default function EvidenceList({ report, language }: EvidenceListProps) {
                             className={styles.similarityFill}
                             style={{
                               width: `${source.similarityScore}%`,
-                              backgroundColor:
-                                source.similarityScore > 70
-                                  ? 'var(--status-success)'
-                                  : source.similarityScore > 40
-                                    ? 'var(--status-warning)'
-                                    : 'var(--accent-link)',
+                              backgroundColor: getSimilarityColor(source.similarityScore),
                             }}
                           />
                         </div>

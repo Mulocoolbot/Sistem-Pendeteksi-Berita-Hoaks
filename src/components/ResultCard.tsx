@@ -108,7 +108,11 @@ export default function ResultCard({ report, language }: ResultCardProps) {
       </header>
 
       <section className={styles.scoreSection} aria-label={t.credibilityScore}>
-        <div className={styles.gauge}>
+        <div
+          className={styles.gauge}
+          role="img"
+          aria-label={`${t.credibilityScore}: ${report.credibilityScore}/100`}
+        >
           <svg className={styles.gaugeCircle} viewBox="0 0 160 160" aria-hidden="true">
             <circle className={styles.gaugeBg} cx="80" cy="80" r={radius} />
             <circle
