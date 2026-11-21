@@ -7,6 +7,7 @@ import type {
   SearchResult,
   SourceEvaluation,
 } from '@/lib/types';
+import { classifyDomain } from '@/lib/utils/credibility';
 import { getDomain, isValidUrl } from '@/lib/utils/sanitize';
 
 interface GoogleSearchApiResponse {
@@ -23,6 +24,81 @@ interface GoogleSearchApiResponse {
       }>;
     };
   }>;
+}
+
+async function fetchBingNewsRssItems(
+  query: string,
+  numResults: number
+): Promise<SearchResult[]> {
+  try {
+    const response = await axios.get<string>('https://www.bing.com/news/search', {
+      params: { q: query, format: 'rss' },
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+        Accept: 'application/rss+xml,application/xml,text/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+      },
+      timeout: HTTP_TIMEOUT_MS,
+    });
+
+    const $ = cheerio.load(response.data, { xmlMode: true });
+    const results: SearchResult[] = [];
+
+    $('item').each((_, el) => {
+      if (results.length >= numResults) return;
+      const title = $(el).find('title').first().text().trim();
+      const rawLink = $(el).find('link').first().text().trim();
+      const description = $(el).find('description').first().text().trim();
+      const pubDate = $(el).find('pubDate').first().text().trim();
+
+      if (!title || !rawLink) return;
+
+      let targetUrl = rawLink;
+      try {
+        const parsedLink = new URL(rawLink);
+        const embeddedUrl = parsedLink.searchParams.get('url');
+        if (embeddedUrl && isValidUrl(embeddedUrl)) {
+          targetUrl = embeddedUrl;
+        }
+      } catch {
+        // Keep rawLink if Bing redirect parsing fails.
+      }
+
+      if (!isValidUrl(targetUrl)) return;
+
+      results.push({
+        title,
+        link: targetUrl,
+        snippet: description,
+        displayLink: getDomain(targetUrl),
+        datePublished: pubDate || null,
+      });
+    });
+
+    return results;
+  } catch (error: unknown) {
+    console.error('Bing News RSS fallback search error:', error);
+    return [];
+  }
+}
+
+async function searchBingNewsRss(
+  query: string,
+  numResults: number
+): Promise<SearchResult[]> {
+  const initialResults = await fetchBingNewsRssItems(query, numResults);
+  if (initialResults.length > 0) {
+    return initialResults;
+  }
+
+  const words = query.trim().split(/\s+/).filter(Boolean);
+  if (words.length > 4) {
+    const shortQuery = words.slice(0, 4).join(' ');
+    return fetchBingNewsRssItems(shortQuery, numResults);
+  }
+
+  return [];
 }
 
 async function searchYahoo(
@@ -71,14 +147,18 @@ async function searchYahoo(
       });
     });
 
-    return results;
+    if (results.length > 0) {
+      return results;
+    }
+
+    return searchBingNewsRss(query, numResults);
   } catch (error: unknown) {
-    console.error('Yahoo fallback search error:', error);
-    return [];
+    console.error('Yahoo fallback search error. Trying Bing News RSS...', error);
+    return searchBingNewsRss(query, numResults);
   }
 }
 
-async function searchRelatedNews(
+export async function searchRelatedNews(
   query: string,
   numResults: number = APP_CONFIG.limits.defaultSearchResults
 ): Promise<SearchResult[]> {
@@ -106,13 +186,15 @@ async function searchRelatedNews(
       return searchYahoo(query, numResults);
     }
 
-    return response.data.items.map((item) => ({
-      title: item.title || '',
-      link: item.link || '',
-      snippet: item.snippet || '',
-      displayLink: item.displayLink || '',
-      datePublished: extractDate(item.pagemap),
-    }));
+    return response.data.items
+      .filter((item): item is typeof item & { link: string } => Boolean(item.link && isValidUrl(item.link)))
+      .map((item) => ({
+        title: item.title || '',
+        link: item.link,
+        snippet: item.snippet || '',
+        displayLink: item.displayLink || getDomain(item.link),
+        datePublished: extractDate(item.pagemap),
+      }));
   } catch (error: unknown) {
     console.error('Google Custom Search error. Falling back to Yahoo search...', error);
     return searchYahoo(query, numResults);
@@ -148,13 +230,14 @@ export function formatSearchResults(results: SearchResult[]): string {
   if (results.length === 0) return '';
 
   return results
-    .map(
-      (r, i) =>
-        `[${i + 1}] "${r.title}"
-  Source: ${r.displayLink}
+    .map((r, i) => {
+      const credibility = classifyDomain(r.link);
+      return `[${i + 1}] "${r.title}"
+  URL: ${r.link}
+  Source: ${r.displayLink} [${credibility.tier} | weight=${credibility.weight} | ${credibility.label}]
   Date: ${r.datePublished || 'Unknown'}
-  Excerpt: ${r.snippet}`
-    )
+  Excerpt: ${r.snippet}`;
+    })
     .join('\n\n');
 }
 
@@ -163,9 +246,14 @@ export function buildEvidenceSources(
   sourceEvaluations: SourceEvaluation[],
   searchResults: SearchResult[]
 ): EvidenceSource[] {
-  const evidenceSources: EvidenceSource[] = relatedArticles.map((art, index) => {
+  const evidenceSources: EvidenceSource[] = [];
+  const seenUrls = new Set<string>();
+
+  relatedArticles.forEach((art, index) => {
     const evaluation = sourceEvaluations.find((e) => e.scrapedIndex === index + 1);
-    return {
+    const credibility = classifyDomain(art.url);
+    seenUrls.add(art.url);
+    evidenceSources.push({
       title: art.title,
       url: art.url,
       siteName: art.siteName || getDomain(art.url),
@@ -175,21 +263,28 @@ export function buildEvidenceSources(
       publishedDate: art.publishedDate,
       similarityScore: evaluation ? evaluation.similarityScore : 0,
       stance: evaluation ? evaluation.stance : 'neutral',
-    };
+      credibilityTier: credibility.tier,
+      credibilityLabel: credibility.label,
+      credibilityWeight: credibility.weight,
+    });
   });
 
-  if (evidenceSources.length === 0 && searchResults.length > 0) {
-    for (const result of searchResults) {
-      evidenceSources.push({
-        title: result.title,
-        url: result.link,
-        siteName: result.displayLink,
-        snippet: result.snippet,
-        publishedDate: result.datePublished,
-        similarityScore: 0,
-        stance: 'neutral',
-      });
-    }
+  for (const result of searchResults) {
+    if (seenUrls.has(result.link)) continue;
+    seenUrls.add(result.link);
+    const credibility = classifyDomain(result.link);
+    evidenceSources.push({
+      title: result.title,
+      url: result.link,
+      siteName: result.displayLink || getDomain(result.link),
+      snippet: result.snippet,
+      publishedDate: result.datePublished,
+      similarityScore: 0,
+      stance: 'neutral',
+      credibilityTier: credibility.tier,
+      credibilityLabel: credibility.label,
+      credibilityWeight: credibility.weight,
+    });
   }
 
   return evidenceSources;

@@ -1,33 +1,43 @@
 import { NextRequest } from 'next/server';
 import { APP_CONFIG } from '@/lib/config';
+import { UrlAnalyzeInputSchema } from '@/lib/schemas/analysis';
 import { runInvestigation } from '@/lib/services/analyzer';
 import { scrapeArticle } from '@/lib/services/scraper';
-import type { AnalyzeUrlRequest } from '@/lib/types';
-import { AppError, createSuccessResponse, parseJsonBody, toErrorResponse } from '@/lib/utils/errors';
-import { isRecord, isValidUrl } from '@/lib/utils/sanitize';
+import { analysisCache, buildUrlCacheKey } from '@/lib/utils/cache';
+import {
+  AppError,
+  createSuccessResponse,
+  parseJsonBody,
+  toErrorResponse,
+} from '@/lib/utils/errors';
 
 export const maxDuration = 60;
-
-function parseAnalyzeUrlRequest(body: unknown): AnalyzeUrlRequest {
-  if (!isRecord(body) || typeof body.url !== 'string' || !isValidUrl(body.url)) {
-    throw AppError.badRequest(
-      'URL tidak valid. Pastikan URL dimulai dengan http:// atau https://',
-      'INVALID_URL'
-    );
-  }
-
-  return {
-    url: body.url,
-    language: typeof body.language === 'string' ? body.language : 'id',
-  };
-}
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
     const rawBody = await parseJsonBody(request);
-    const { url, language = 'id' } = parseAnalyzeUrlRequest(rawBody);
+    const parsed = UrlAnalyzeInputSchema.safeParse(rawBody);
+
+    if (!parsed.success) {
+      const issueMessage =
+        parsed.error.issues[0]?.message ||
+        'URL tidak valid. Pastikan URL dimulai dengan http:// atau https://';
+      throw AppError.badRequest(issueMessage, 'INVALID_URL');
+    }
+
+    const { url, language } = parsed.data;
+    const cacheKey = buildUrlCacheKey(url);
+    const cachedReport = analysisCache.get(cacheKey);
+
+    if (cachedReport) {
+      return createSuccessResponse({
+        ...cachedReport,
+        cached: true,
+        analysisTimeMs: Date.now() - startTime,
+      });
+    }
 
     const article = await scrapeArticle(url);
     if (!article.content || article.content.length < APP_CONFIG.limits.minArticleContentLength) {
@@ -44,6 +54,8 @@ export async function POST(request: NextRequest) {
       articleContent: article.content,
       language,
       excludeUrl: url,
+      publishedDate: article.publishedDate,
+      cacheKey,
       startTimeMs: startTime,
     });
 

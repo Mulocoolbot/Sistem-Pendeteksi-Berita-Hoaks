@@ -1,7 +1,7 @@
 'use client';
 
 import styles from './EvidenceList.module.css';
-import type { InvestigationReport } from '@/lib/types';
+import type { CredibilityTier, InvestigationReport } from '@/lib/types';
 import { getDomain } from '@/lib/utils/sanitize';
 import { TRANSLATIONS, type LanguageCode } from '@/lib/utils/translations';
 
@@ -18,7 +18,8 @@ function getSimilarityColor(score: number): string {
 
 export default function EvidenceList({ report, language }: EvidenceListProps) {
   const t = TRANSLATIONS[language];
-  const { evidenceSources, factCheckResults } = report;
+  const evidenceSources = report.evidenceSources ?? [];
+  const factCheckResults = report.factCheckResults ?? [];
 
   const getStanceClass = (stance: string) => {
     switch (stance.toLowerCase()) {
@@ -37,6 +38,17 @@ export default function EvidenceList({ report, language }: EvidenceListProps) {
         return styles.badgeSupports;
       case 'contradicts':
         return styles.badgeContradicts;
+      default:
+        return styles.badgeNeutral;
+    }
+  };
+
+  const getCredibilityBadgeClass = (tier?: CredibilityTier) => {
+    switch (tier) {
+      case 'TIER_1':
+        return styles.badgeSupports;
+      case 'TIER_2':
+        return styles.reviewRating;
       default:
         return styles.badgeNeutral;
     }
@@ -74,6 +86,15 @@ export default function EvidenceList({ report, language }: EvidenceListProps) {
                   <span>
                     {language === 'id' ? 'oleh' : 'by'} {review.publisher}
                   </span>
+                  {review.credibilityLabel && (
+                    <span
+                      className={`${styles.stanceBadge} ${getCredibilityBadgeClass(
+                        review.credibilityTier
+                      )}`}
+                    >
+                      {review.credibilityLabel}
+                    </span>
+                  )}
                   {review.url && (
                     <a
                       href={review.url}
@@ -118,6 +139,15 @@ export default function EvidenceList({ report, language }: EvidenceListProps) {
                       <span className={styles.evidenceSite}>
                         {source.siteName || getDomain(source.url)}
                       </span>
+                      {source.credibilityLabel && (
+                        <span
+                          className={`${styles.stanceBadge} ${getCredibilityBadgeClass(
+                            source.credibilityTier
+                          )}`}
+                        >
+                          {source.credibilityLabel}
+                        </span>
+                      )}
                       {source.publishedDate && <span>{source.publishedDate}</span>}
                     </div>
                     <div className={styles.evidenceSnippet}>{source.snippet}</div>

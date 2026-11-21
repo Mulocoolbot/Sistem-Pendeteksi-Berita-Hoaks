@@ -1,25 +1,25 @@
 import Groq from 'groq-sdk';
+import type { ChatCompletionMessageParam } from 'groq-sdk/resources/chat/completions';
+import { z } from 'zod';
 import { APP_CONFIG, getEnvConfig } from '@/lib/config';
+import {
+  ClaimExtractionOutputSchema,
+  FinalSynthesisOutputSchema,
+  ImageAnalysisOutputSchema,
+} from '@/lib/schemas/analysis';
 import type {
-  ClaimAssessment,
-  ClaimData,
-  ClaimImportance,
-  ConfidenceLevel,
+  ClaimExtractionOutput,
+  FinalSynthesisOutput,
   ImageAnalysisResult,
-  ImageContentType,
-  InvestigationAIResult,
-  SourceEvaluation,
-  SourceStance,
-  Verdict,
 } from '@/lib/types';
 import { AppError } from '@/lib/utils/errors';
 import {
+  type FinalSynthesisPromptInput,
   getClaimExtractionPrompt,
+  getFinalSynthesisPrompt,
   getImageAnalysisPrompt,
-  getInvestigationPrompt,
-  getSearchQueryPrompt,
 } from '@/lib/utils/prompts';
-import { isRecord, safeJsonParse } from '@/lib/utils/sanitize';
+import { isRecord } from '@/lib/utils/sanitize';
 
 const LANGUAGE_NAMES: Record<string, string> = {
   en: 'English',
@@ -32,35 +32,13 @@ const LANGUAGE_NAMES: Record<string, string> = {
   id: 'Indonesian (Bahasa Indonesia)',
 };
 
-function isVerdict(value: unknown): value is Verdict {
-  return (
-    value === 'HOAKS' ||
-    value === 'FAKTA' ||
-    value === 'MISLEADING' ||
-    value === 'BELUM TERVERIFIKASI'
-  );
-}
-
-function isConfidenceLevel(value: unknown): value is ConfidenceLevel {
-  return value === 'high' || value === 'medium' || value === 'low';
-}
-
-function isClaimImportance(value: unknown): value is ClaimImportance {
-  return value === 'high' || value === 'medium' || value === 'low';
-}
-
-function isSourceStance(value: unknown): value is SourceStance {
-  return value === 'supports' || value === 'contradicts' || value === 'neutral';
-}
-
-function isImageContentType(value: unknown): value is ImageContentType {
-  return (
-    value === 'news-screenshot' ||
-    value === 'social-media' ||
-    value === 'poster' ||
-    value === 'meme' ||
-    value === 'other'
-  );
+export interface GroqStructuredCallParams {
+  systemPrompt: string;
+  userPrompt: string;
+  model?: string;
+  fallbackModel?: string;
+  temperature?: number;
+  maxTokens?: number;
 }
 
 function getGroqClient(): Groq {
@@ -90,7 +68,6 @@ function isJsonValidationError(error: unknown): boolean {
 }
 
 function shouldUseFallbackModel(error: unknown): boolean {
-  if (isJsonValidationError(error)) return true;
   if (!isRecord(error)) return false;
   if (error.status === 429 || error.status === 404) return true;
   if (typeof error.message === 'string') {
@@ -105,148 +82,203 @@ function shouldUseFallbackModel(error: unknown): boolean {
   return false;
 }
 
-function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((item): item is string => typeof item === 'string');
-}
-
-function toVerdict(value: unknown): Verdict {
-  return isVerdict(value) ? value : 'BELUM TERVERIFIKASI';
-}
-
-function toConfidenceLevel(value: unknown): ConfidenceLevel {
-  return isConfidenceLevel(value) ? value : 'low';
-}
-
-function toClaimImportance(value: unknown): ClaimImportance {
-  return isClaimImportance(value) ? value : 'medium';
-}
-
-function toSourceStance(value: unknown): SourceStance {
-  return isSourceStance(value) ? value : 'neutral';
-}
-
-function toImageContentType(value: unknown): ImageContentType {
-  return isImageContentType(value) ? value : 'other';
-}
-
-function normalizeClaimAssessments(value: unknown): ClaimAssessment[] {
-  if (!Array.isArray(value)) return [];
-
-  const assessments: ClaimAssessment[] = [];
-  for (const item of value) {
-    if (!isRecord(item) || typeof item.claim !== 'string') continue;
-    assessments.push({
-      claim: item.claim,
-      verdict: toVerdict(item.verdict),
-      confidence: typeof item.confidence === 'number' ? item.confidence : 0,
-      explanation: typeof item.explanation === 'string' ? item.explanation : '',
-      supportingSources: toStringArray(item.supportingSources),
-      contradictingSources: toStringArray(item.contradictingSources),
-    });
+function tryParseJson(
+  rawText: string
+): { ok: true; data: unknown } | { ok: false; error: string } {
+  const trimmed = rawText.trim();
+  if (!trimmed) {
+    return { ok: false, error: 'Respons LLM kosong.' };
   }
-  return assessments;
-}
 
-function normalizeSourceEvaluations(value: unknown): SourceEvaluation[] {
-  if (!Array.isArray(value)) return [];
-
-  const evaluations: SourceEvaluation[] = [];
-  for (const item of value) {
-    if (!isRecord(item) || typeof item.scrapedIndex !== 'number') continue;
-    evaluations.push({
-      scrapedIndex: item.scrapedIndex,
-      similarityScore: typeof item.similarityScore === 'number' ? item.similarityScore : 0,
-      stance: toSourceStance(item.stance),
-    });
+  try {
+    return { ok: true, data: JSON.parse(trimmed) };
+  } catch (directError: unknown) {
+    const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        return { ok: true, data: JSON.parse(jsonMatch[0]) };
+      } catch (embeddedError: unknown) {
+        return {
+          ok: false,
+          error:
+            embeddedError instanceof Error
+              ? embeddedError.message
+              : 'Sintaks JSON tidak valid.',
+        };
+      }
+    }
+    return {
+      ok: false,
+      error:
+        directError instanceof Error ? directError.message : 'Sintaks JSON tidak valid.',
+    };
   }
-  return evaluations;
 }
 
-async function chatCompletion(prompt: string, languageCode: string = 'id'): Promise<string> {
-  const groq = getGroqClient();
-  const langName = getLanguageName(languageCode);
-  const { textModel, fallbackTextModel, temperature, maxTokens } = APP_CONFIG.ai;
+function formatZodIssues(error: z.ZodError): string {
+  return error.issues
+    .slice(0, 8)
+    .map((issue) => {
+      const path = issue.path.length > 0 ? issue.path.join('.') : 'root';
+      return `${path}: ${issue.message}`;
+    })
+    .join('; ');
+}
 
-  const makeRequest = (modelId: string, enforceJsonObject: boolean = true) =>
-    groq.chat.completions.create({
+async function sendJsonCompletion(
+  groq: Groq,
+  messages: ChatCompletionMessageParam[],
+  primaryModel: string,
+  fallbackModel: string,
+  temperature: number,
+  maxTokens: number
+): Promise<string> {
+  const requestModel = async (modelId: string): Promise<string> => {
+    const result = await groq.chat.completions.create({
       model: modelId,
-      messages: [
-        {
-          role: 'system',
-          content: `You are a professional fact-checker and investigative journalist AI. Always respond in valid JSON format. All user-facing text in the JSON (such as summaries, explanations, claims, assessments, and findings) MUST be written in ${langName}.`,
-        },
-        { role: 'user', content: prompt },
-      ],
+      messages,
       temperature,
       max_tokens: maxTokens,
-      ...(enforceJsonObject ? { response_format: { type: 'json_object' as const } } : {}),
+      response_format: { type: 'json_object' },
     });
-
-  const requestModel = async (modelId: string): Promise<string> => {
-    try {
-      const result = await makeRequest(modelId, true);
-      return result.choices[0]?.message?.content || '';
-    } catch (error: unknown) {
-      if (isJsonValidationError(error)) {
-        const retryResult = await makeRequest(modelId, false);
-        return retryResult.choices[0]?.message?.content || '';
-      }
-      throw error;
-    }
+    return result.choices[0]?.message?.content || '';
   };
 
   try {
-    return await requestModel(textModel);
+    return await requestModel(primaryModel);
   } catch (error: unknown) {
     if (shouldUseFallbackModel(error)) {
-      try {
-        return await requestModel(fallbackTextModel);
-      } catch (fallbackError: unknown) {
-        if (shouldUseFallbackModel(fallbackError)) {
-          console.error(`Fallback model ${fallbackTextModel} also failed:`, fallbackError);
-          return '';
-        }
-        throw fallbackError;
-      }
+      return await requestModel(fallbackModel);
     }
     throw error;
   }
 }
 
-export async function extractClaims(
+function parseAndValidate<T>(
+  rawText: string,
+  schema: z.ZodSchema<T>
+): { ok: true; data: T } | { ok: false; error: string } {
+  const parsed = tryParseJson(rawText);
+  if (!parsed.ok) {
+    return { ok: false, error: `JSON parse error: ${parsed.error}` };
+  }
+
+  const validation = schema.safeParse(parsed.data);
+  if (!validation.success) {
+    return { ok: false, error: `Zod validation error: ${formatZodIssues(validation.error)}` };
+  }
+
+  return { ok: true, data: validation.data };
+}
+
+export async function callGroqStructured<T>(
+  params: GroqStructuredCallParams,
+  schema: z.ZodSchema<T>
+): Promise<T> {
+  const groq = getGroqClient();
+  const primaryModel = params.model ?? APP_CONFIG.ai.textModel;
+  const fallbackModel = params.fallbackModel ?? APP_CONFIG.ai.fallbackTextModel;
+  const temperature = params.temperature ?? APP_CONFIG.ai.temperature;
+  const maxTokens = params.maxTokens ?? APP_CONFIG.ai.maxTokens;
+
+  const baseMessages: ChatCompletionMessageParam[] = [
+    { role: 'system', content: params.systemPrompt },
+    { role: 'user', content: params.userPrompt },
+  ];
+
+  let firstRawText = '';
+  let firstError = '';
+
+  try {
+    firstRawText = await sendJsonCompletion(
+      groq,
+      baseMessages,
+      primaryModel,
+      fallbackModel,
+      temperature,
+      maxTokens
+    );
+    const firstResult = parseAndValidate(firstRawText, schema);
+    if (firstResult.ok) {
+      return firstResult.data;
+    }
+    firstError = firstResult.error;
+  } catch (error: unknown) {
+    if (!isJsonValidationError(error)) {
+      throw error;
+    }
+    firstError = 'Provider menolak JSON output (json_validate_failed).';
+  }
+
+  // Perform exactly 1 retry with the concise schema/JSON error so the model can self-correct.
+  const retryMessages: ChatCompletionMessageParam[] = [
+    ...baseMessages,
+    ...(firstRawText ? [{ role: 'assistant' as const, content: firstRawText }] : []),
+    {
+      role: 'user',
+      content: `Respons JSON sebelumnya gagal validasi: ${firstError}. Perbaiki formatnya dan kembalikan HANYA objek JSON valid yang sesuai persis dengan schema yang diminta.`,
+    },
+  ];
+
+  let retryRawText = '';
+  try {
+    retryRawText = await sendJsonCompletion(
+      groq,
+      retryMessages,
+      primaryModel,
+      fallbackModel,
+      temperature,
+      maxTokens
+    );
+  } catch (error: unknown) {
+    if (isJsonValidationError(error)) {
+      throw AppError.badGateway(
+        'Gagal memvalidasi output AI terhadap schema setelah 1x retry: json_validate_failed.',
+        'LLM_SCHEMA_VALIDATION_FAILED'
+      );
+    }
+    throw error;
+  }
+
+  const retryResult = parseAndValidate(retryRawText, schema);
+  if (retryResult.ok) {
+    return retryResult.data;
+  }
+
+  throw AppError.badGateway(
+    `Output AI tidak sesuai schema setelah 1x retry: ${retryResult.error}`,
+    'LLM_SCHEMA_VALIDATION_FAILED'
+  );
+}
+
+export async function extractClaimsAndSignals(
   title: string,
   content: string,
+  languageCode: string = 'id',
+  publishedDate: string | null = null
+): Promise<ClaimExtractionOutput> {
+  const langName = getLanguageName(languageCode);
+  const systemPrompt = `You are a professional fact-checker and investigative journalist AI. Always respond with a single valid JSON object. All descriptive text (headline, statements, reasons) MUST be written in ${langName}, while the "language" field MUST be strictly "id" or "en".`;
+  const userPrompt = getClaimExtractionPrompt(title, content, publishedDate);
+
+  return callGroqStructured(
+    { systemPrompt, userPrompt },
+    ClaimExtractionOutputSchema
+  );
+}
+
+export async function synthesizeFinalVerdict(
+  input: FinalSynthesisPromptInput,
   languageCode: string = 'id'
-): Promise<ClaimData[]> {
-  const prompt = getClaimExtractionPrompt(title, content);
-  const text = await chatCompletion(prompt, languageCode);
-  const parsed = safeJsonParse(text, isRecord);
+): Promise<FinalSynthesisOutput> {
+  const langName = getLanguageName(languageCode);
+  const systemPrompt = `You are a senior investigative fact-checker AI. Always respond with a single valid JSON object. Write "summary" and claim "reasoning" in ${langName}. Never invent URLs or facts outside the provided evidence.`;
+  const userPrompt = getFinalSynthesisPrompt(input);
 
-  if (!parsed || !Array.isArray(parsed.claims)) {
-    console.error('Failed to parse claim extraction response:', text);
-    return [
-      {
-        claim: title,
-        context: 'Main headline/title of the article',
-        importance: 'high',
-      },
-    ];
-  }
-
-  const claims: ClaimData[] = [];
-  for (const item of parsed.claims) {
-    if (!isRecord(item) || typeof item.claim !== 'string') continue;
-    claims.push({
-      claim: item.claim,
-      context: typeof item.context === 'string' ? item.context : '',
-      importance: toClaimImportance(item.importance),
-    });
-  }
-
-  return claims.length > 0
-    ? claims
-    : [{ claim: title, context: 'Main headline/title of the article', importance: 'high' }];
+  return callGroqStructured(
+    { systemPrompt, userPrompt },
+    FinalSynthesisOutputSchema
+  );
 }
 
 export async function analyzeImage(
@@ -259,119 +291,65 @@ export async function analyzeImage(
   const langName = getLanguageName(languageCode);
   const { visionModel, temperature, maxTokens } = APP_CONFIG.ai;
 
-  const result = await groq.chat.completions.create({
-    model: visionModel,
-    messages: [
-      {
-        role: 'system',
-        content: `You are an expert AI image analyzer. Always respond in valid JSON format. All user-facing text in the JSON (such as summary/explanations) MUST be written in ${langName}.`,
+  const systemContent = `You are an expert AI image analyzer. Always respond in valid JSON format. All user-facing text in the JSON (such as summary/explanations) MUST be written in ${langName}.`;
+  const userContent: ChatCompletionMessageParam['content'] = [
+    { type: 'text', text: prompt },
+    {
+      type: 'image_url',
+      image_url: {
+        url: `data:${mimeType};base64,${imageBase64}`,
       },
-      {
-        role: 'user',
-        content: [
-          { type: 'text', text: prompt },
-          {
-            type: 'image_url',
-            image_url: {
-              url: `data:${mimeType};base64,${imageBase64}`,
+    },
+  ];
+
+  const requestVision = async (extraFeedback?: string): Promise<string> => {
+    const messages: ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemContent },
+      { role: 'user', content: userContent },
+      ...(extraFeedback
+        ? [
+            {
+              role: 'user' as const,
+              content: `Previous JSON validation failed: ${extraFeedback}. Return ONLY valid JSON matching the exact schema.`,
             },
-          },
-        ],
-      },
-    ],
-    temperature,
-    max_tokens: maxTokens,
-    response_format: { type: 'json_object' },
-  });
+          ]
+        : []),
+    ];
 
-  const text = result.choices[0]?.message?.content || '';
-  const parsed = safeJsonParse(text, isRecord);
+    const result = await groq.chat.completions.create({
+      model: visionModel,
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+      response_format: { type: 'json_object' },
+    });
 
-  if (!parsed) {
-    console.error('Failed to parse image analysis response:', text);
-    return {
-      extractedText: text,
-      contentType: 'other',
-      detectedSource: null,
-      detectedDate: null,
-      summary: 'Gambar berhasil dianalisis, namun hasilnya tidak terstruktur.',
-    };
-  }
-
-  return {
-    extractedText: typeof parsed.extractedText === 'string' ? parsed.extractedText : text,
-    contentType: toImageContentType(parsed.contentType),
-    detectedSource: typeof parsed.detectedSource === 'string' ? parsed.detectedSource : null,
-    detectedDate: typeof parsed.detectedDate === 'string' ? parsed.detectedDate : null,
-    summary:
-      typeof parsed.summary === 'string'
-        ? parsed.summary
-        : 'Gambar berhasil dianalisis, namun ringkasan tidak tersedia.',
+    return result.choices[0]?.message?.content || '';
   };
-}
 
-export async function generateSearchQueries(
-  claims: ClaimData[],
-  articleTitle: string,
-  languageCode: string = 'id'
-): Promise<string[]> {
-  const claimTexts = claims.map((c) => c.claim);
-  const prompt = getSearchQueryPrompt(claimTexts, articleTitle);
-  const text = await chatCompletion(prompt, languageCode);
-  const parsed = safeJsonParse(text, isRecord);
-  const queries = parsed ? toStringArray(parsed.queries) : [];
-
-  if (queries.length === 0) {
-    return [articleTitle, claimTexts[0] || articleTitle].filter(Boolean);
+  let firstError = '';
+  try {
+    const firstRaw = await requestVision();
+    const firstParsed = parseAndValidate(firstRaw, ImageAnalysisOutputSchema);
+    if (firstParsed.ok) {
+      return firstParsed.data;
+    }
+    firstError = firstParsed.error;
+  } catch (error: unknown) {
+    if (!isJsonValidationError(error)) {
+      throw error;
+    }
+    firstError = 'Provider json_validate_failed';
   }
 
-  return queries;
-}
+  const retryRaw = await requestVision(firstError);
+  const retryParsed = parseAndValidate(retryRaw, ImageAnalysisOutputSchema);
+  if (retryParsed.ok) {
+    return retryParsed.data;
+  }
 
-export async function investigateCredibility(
-  articleTitle: string,
-  articleContent: string,
-  claims: ClaimData[],
-  factCheckData: string,
-  relatedArticles: string,
-  languageCode: string = 'id'
-): Promise<InvestigationAIResult> {
-  const claimTexts = claims.map((c) => c.claim);
-  const prompt = getInvestigationPrompt(
-    articleTitle,
-    articleContent,
-    claimTexts,
-    factCheckData,
-    relatedArticles
+  throw AppError.badGateway(
+    `Output analisis gambar AI tidak sesuai schema setelah 1x retry: ${retryParsed.error}`,
+    'LLM_SCHEMA_VALIDATION_FAILED'
   );
-
-  const text = await chatCompletion(prompt, languageCode);
-  const parsed = safeJsonParse(text, isRecord);
-
-  if (!parsed) {
-    console.error('Failed to parse investigation response:', text);
-    return {
-      overallVerdict: 'BELUM TERVERIFIKASI',
-      credibilityScore: 50,
-      confidenceLevel: 'low',
-      summary: 'Sistem tidak dapat menyelesaikan investigasi secara lengkap. Silakan verifikasi secara manual.',
-      claimAssessments: [],
-      keyFindings: ['Analisis AI gagal diproses'],
-      redFlags: [],
-      positiveIndicators: [],
-      sourceEvaluations: [],
-    };
-  }
-
-  return {
-    overallVerdict: toVerdict(parsed.overallVerdict),
-    credibilityScore: typeof parsed.credibilityScore === 'number' ? parsed.credibilityScore : 50,
-    confidenceLevel: toConfidenceLevel(parsed.confidenceLevel),
-    summary: typeof parsed.summary === 'string' ? parsed.summary : 'Analisis tidak tersedia.',
-    claimAssessments: normalizeClaimAssessments(parsed.claimAssessments),
-    keyFindings: toStringArray(parsed.keyFindings),
-    redFlags: toStringArray(parsed.redFlags),
-    positiveIndicators: toStringArray(parsed.positiveIndicators),
-    sourceEvaluations: normalizeSourceEvaluations(parsed.sourceEvaluations),
-  };
 }

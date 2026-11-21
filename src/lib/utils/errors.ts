@@ -27,6 +27,10 @@ export class AppError extends Error {
   static internal(message: string, code: string = 'INTERNAL_ERROR'): AppError {
     return new AppError(message, 500, code);
   }
+
+  static badGateway(message: string, code: string = 'BAD_GATEWAY'): AppError {
+    return new AppError(message, 502, code);
+  }
 }
 
 export async function parseJsonBody(request: NextRequest): Promise<unknown> {

@@ -1,17 +1,45 @@
-export type Verdict = 'HOAKS' | 'FAKTA' | 'MISLEADING' | 'BELUM TERVERIFIKASI';
+import type { z } from 'zod';
+import type {
+  AtomicClaimSchema,
+  ClaimExtractionOutputSchema,
+  CredibilityTierSchema,
+  ExtractedClaimItemSchema,
+  FinalSynthesisOutputSchema,
+  ImageAnalysisOutputSchema,
+  ImageAnalyzeInputSchema,
+  ImageContentTypeSchema,
+  JournalisticSignalsSchema,
+  UrlAnalyzeInputSchema,
+  VerdictSchema,
+} from '@/lib/schemas/analysis';
+
+export type Verdict = z.infer<typeof VerdictSchema>;
+
+export type CredibilityTier = z.infer<typeof CredibilityTierSchema>;
+
+export type AtomicClaim = z.infer<typeof AtomicClaimSchema>;
+
+export type JournalisticSignals = z.infer<typeof JournalisticSignalsSchema>;
+
+export type ExtractedClaimItem = z.infer<typeof ExtractedClaimItemSchema>;
+
+export type ClaimExtractionOutput = z.infer<typeof ClaimExtractionOutputSchema>;
+
+export type FinalSynthesisOutput = z.infer<typeof FinalSynthesisOutputSchema>;
+
+export type ImageContentType = z.infer<typeof ImageContentTypeSchema>;
+
+export type ImageAnalysisResult = z.infer<typeof ImageAnalysisOutputSchema>;
+
+export type AnalyzeUrlRequest = z.infer<typeof UrlAnalyzeInputSchema>;
+
+export type AnalyzeImageRequest = z.infer<typeof ImageAnalyzeInputSchema>;
 
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
 
 export type SourceStance = 'supports' | 'contradicts' | 'neutral';
 
 export type ClaimImportance = 'high' | 'medium' | 'low';
-
-export type ImageContentType =
-  | 'news-screenshot'
-  | 'social-media'
-  | 'poster'
-  | 'meme'
-  | 'other';
 
 export interface ArticleData {
   url: string;
@@ -37,6 +65,8 @@ export interface FactCheckReview {
   title: string;
   rating: string;
   languageCode: string;
+  credibilityTier?: CredibilityTier;
+  credibilityLabel?: string;
 }
 
 export interface FactCheckResult {
@@ -62,6 +92,9 @@ export interface EvidenceSource {
   publishedDate: string | null;
   similarityScore: number;
   stance: SourceStance;
+  credibilityTier: CredibilityTier;
+  credibilityLabel: string;
+  credibilityWeight: number;
 }
 
 export interface ClaimAssessment {
@@ -79,50 +112,32 @@ export interface SourceEvaluation {
   stance: SourceStance;
 }
 
-export interface InvestigationAIResult {
-  overallVerdict: Verdict;
-  credibilityScore: number;
-  confidenceLevel: ConfidenceLevel;
-  summary: string;
-  claimAssessments: ClaimAssessment[];
-  keyFindings: string[];
-  redFlags: string[];
-  positiveIndicators: string[];
-  sourceEvaluations: SourceEvaluation[];
-}
-
 export interface InvestigationReport {
   inputType: 'url' | 'image';
   inputValue: string;
   articleTitle: string;
   articleContent: string;
 
+  verdict: Verdict;
   overallVerdict: Verdict;
+  confidenceScore: number;
   credibilityScore: number;
   confidenceLevel: ConfidenceLevel;
 
   summary: string;
+  claims: AtomicClaim[];
   claimAssessments: ClaimAssessment[];
+  signals: JournalisticSignals;
   evidenceSources: EvidenceSource[];
   factCheckResults: FactCheckResult[];
 
   analyzedAt: string;
   analysisTimeMs: number;
+  cached: boolean;
 
   keyFindings: string[];
   redFlags: string[];
   positiveIndicators: string[];
-}
-
-export interface AnalyzeUrlRequest {
-  url: string;
-  language?: string;
-}
-
-export interface AnalyzeImageRequest {
-  imageBase64: string;
-  mimeType: string;
-  language?: string;
 }
 
 export interface ApiResponse<T> {
@@ -143,11 +158,3 @@ export type AnalysisStep =
   | 'generating-report'
   | 'complete'
   | 'error';
-
-export interface ImageAnalysisResult {
-  extractedText: string;
-  contentType: ImageContentType;
-  detectedSource: string | null;
-  detectedDate: string | null;
-  summary: string;
-}

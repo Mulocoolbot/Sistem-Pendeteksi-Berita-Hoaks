@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { APP_CONFIG, getEnvConfig, HTTP_TIMEOUT_MS } from '@/lib/config';
 import type { FactCheckResult, FactCheckReview } from '@/lib/types';
+import { classifyDomain } from '@/lib/utils/credibility';
 
 interface FactCheckApiResponse {
   claims?: Array<{
@@ -20,7 +21,7 @@ interface FactCheckApiResponse {
   }>;
 }
 
-async function checkClaim(claim: string): Promise<FactCheckResult[]> {
+export async function checkClaim(claim: string): Promise<FactCheckResult[]> {
   const { googleFactCheckApiKey } = getEnvConfig();
   if (!googleFactCheckApiKey) {
     return [];
@@ -47,15 +48,18 @@ async function checkClaim(claim: string): Promise<FactCheckResult[]> {
       text: c.text || claim,
       claimant: c.claimant || null,
       claimDate: c.claimDate || null,
-      reviews: (c.claimReview || []).map(
-        (r): FactCheckReview => ({
+      reviews: (c.claimReview || []).map((r): FactCheckReview => {
+        const domainInfo = classifyDomain(r.url || r.publisher?.site || '');
+        return {
           publisher: r.publisher?.name || r.publisher?.site || 'Unknown',
           url: r.url || '',
           title: r.title || '',
           rating: r.textualRating || 'Unknown',
           languageCode: r.languageCode || 'en',
-        })
-      ),
+          credibilityTier: domainInfo.tier,
+          credibilityLabel: domainInfo.label,
+        };
+      }),
     }));
   } catch (error: unknown) {
     console.error('Fact Check API error:', error);
@@ -82,7 +86,11 @@ export function formatFactCheckResults(results: FactCheckResult[]): string {
   return results
     .map((r, i) => {
       const reviews = r.reviews
-        .map((rev) => `  - ${rev.publisher}: "${rev.rating}" (${rev.url})`)
+        .map((rev) => {
+          const tier = rev.credibilityTier ?? classifyDomain(rev.url).tier;
+          const label = rev.credibilityLabel ?? classifyDomain(rev.url).label;
+          return `  - ${rev.publisher} [${tier} - ${label}]: "${rev.rating}" (${rev.url})`;
+        })
         .join('\n');
       return `[${i + 1}] Claim: "${r.text}"
   Claimant: ${r.claimant || 'Unknown'}
