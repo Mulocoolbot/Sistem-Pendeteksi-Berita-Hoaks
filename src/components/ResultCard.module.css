@@ -1,54 +1,71 @@
-/* ResultCard.module.css */
-
 .resultCard {
   max-width: 900px;
   margin: 0 auto var(--spacing-2xl);
   padding: var(--spacing-2xl);
-  background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--border-glass);
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
-  animation: fadeInUp 0.6s ease-out;
+  box-shadow: var(--shadow-sm);
 }
 
-/* ── Verdict Header ────────────────────────── */
 .verdictHeader {
   text-align: center;
   margin-bottom: var(--spacing-2xl);
   padding-bottom: var(--spacing-xl);
-  border-bottom: 1px solid var(--border-glass);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .verdictBadge {
   display: inline-block;
-  padding: 0.6rem 2rem;
+  padding: 0.5rem 1.5rem;
   border-radius: var(--radius-full);
+  border: 1px solid transparent;
   font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: white;
+  font-size: 1.25rem;
+  font-weight: 700;
   margin-bottom: var(--spacing-lg);
-  letter-spacing: 0.05em;
-  animation: fadeInUp 0.4s ease-out 0.2s both;
+  letter-spacing: 0.03em;
+}
+
+.verdictBadgeDanger {
+  background-color: var(--status-danger-bg);
+  border-color: var(--status-danger-border);
+  color: var(--status-danger);
+}
+
+.verdictBadgeSuccess {
+  background-color: var(--status-success-bg);
+  border-color: var(--status-success-border);
+  color: var(--status-success);
+}
+
+.verdictBadgeWarning {
+  background-color: var(--status-warning-bg);
+  border-color: var(--status-warning-border);
+  color: var(--status-warning);
+}
+
+.verdictBadgeNeutral {
+  background-color: var(--status-neutral-bg);
+  border-color: var(--status-neutral-border);
+  color: var(--status-neutral);
 }
 
 .articleTitle {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-  margin-bottom: var(--spacing-sm);
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 auto var(--spacing-sm);
+  max-width: 65ch;
 }
 
 .inputSource {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
   font-family: var(--font-mono);
+  word-break: break-all;
 }
 
-/* ── Score Gauge ───────────────────────────── */
 .scoreSection {
   display: flex;
   justify-content: center;
@@ -72,7 +89,7 @@
 
 .gaugeBg {
   fill: none;
-  stroke: var(--bg-tertiary);
+  stroke: var(--surface-tertiary);
   stroke-width: 8;
 }
 
@@ -80,7 +97,7 @@
   fill: none;
   stroke-width: 8;
   stroke-linecap: round;
-  transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: stroke-dashoffset 250ms ease-out;
 }
 
 .gaugeCenter {
@@ -94,16 +111,17 @@
 
 .gaugeScore {
   font-family: var(--font-display);
-  font-size: 2.8rem;
-  font-weight: 900;
+  font-size: 2.5rem;
+  font-weight: 800;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .gaugeLabel {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   margin-top: 4px;
 }
 
@@ -117,63 +135,57 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   color: var(--text-secondary);
-}
-
-.scoreDetailIcon {
-  font-size: 1rem;
-  width: 24px;
-  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .confidenceBadge {
   padding: 0.15rem 0.6rem;
   border-radius: var(--radius-full);
+  border: 1px solid transparent;
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
 }
 
 .confidenceHigh {
-  background: rgba(52, 211, 153, 0.15);
-  color: var(--accent-green);
+  background-color: var(--status-success-bg);
+  border-color: var(--status-success-border);
+  color: var(--status-success);
 }
 
 .confidenceMedium {
-  background: rgba(251, 191, 36, 0.15);
-  color: var(--accent-amber);
+  background-color: var(--status-warning-bg);
+  border-color: var(--status-warning-border);
+  color: var(--status-warning);
 }
 
 .confidenceLow {
-  background: rgba(248, 113, 113, 0.15);
-  color: var(--accent-red);
+  background-color: var(--status-danger-bg);
+  border-color: var(--status-danger-border);
+  color: var(--status-danger);
 }
 
-/* ── Summary ───────────────────────────────── */
 .summary {
   margin-bottom: var(--spacing-2xl);
 }
 
 .sectionTitle {
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: var(--spacing-md);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
 }
 
 .summaryText {
   color: var(--text-secondary);
-  line-height: 1.8;
+  line-height: 1.7;
   font-size: 0.95rem;
   white-space: pre-wrap;
 }
 
-/* ── Findings Lists ────────────────────────── */
 .findingsSection {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -184,41 +196,40 @@
 .findingsList {
   padding: var(--spacing-lg);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-glass);
+  border: 1px solid var(--border-subtle);
 }
 
 .redFlagsList {
-  background: rgba(248, 113, 113, 0.05);
-  border-color: rgba(248, 113, 113, 0.15);
+  background-color: var(--status-danger-bg);
+  border-color: var(--status-danger-border);
 }
 
 .positiveList {
-  background: rgba(52, 211, 153, 0.05);
-  border-color: rgba(52, 211, 153, 0.15);
+  background-color: var(--status-success-bg);
+  border-color: var(--status-success-border);
 }
 
 .findingsListTitle {
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 600;
   margin-bottom: var(--spacing-md);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
 }
 
 .findingsListTitle.red {
-  color: var(--accent-red);
+  color: var(--status-danger);
 }
 
 .findingsListTitle.green {
-  color: var(--accent-green);
+  color: var(--status-success);
+}
+
+.findingsItems {
+  list-style: disc;
+  padding-left: var(--spacing-lg);
 }
 
 .findingItem {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-sm);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   color: var(--text-secondary);
   margin-bottom: var(--spacing-sm);
   line-height: 1.5;
@@ -228,27 +239,16 @@
   margin-bottom: 0;
 }
 
-.findingBullet {
-  margin-top: 2px;
-  flex-shrink: 0;
-}
-
-/* ── Claim Assessments ─────────────────────── */
 .claimsSection {
   margin-bottom: var(--spacing-2xl);
 }
 
 .claimCard {
   padding: var(--spacing-lg);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-glass);
+  background-color: var(--surface-secondary);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   margin-bottom: var(--spacing-md);
-  transition: all var(--transition-base);
-}
-
-.claimCard:hover {
-  border-color: var(--border-color-hover);
 }
 
 .claimHeader {
@@ -261,59 +261,64 @@
 
 .claimText {
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   flex: 1;
   line-height: 1.5;
 }
 
 .claimVerdict {
-  padding: 0.2rem 0.75rem;
+  padding: 0.2rem 0.7rem;
   border-radius: var(--radius-full);
+  border: 1px solid transparent;
   font-size: 0.72rem;
   font-weight: 700;
   white-space: nowrap;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
 .verdictHOAKS {
-  background: rgba(248, 113, 113, 0.15);
-  color: var(--accent-red);
+  background-color: var(--status-danger-bg);
+  border-color: var(--status-danger-border);
+  color: var(--status-danger);
 }
 
 .verdictFAKTA {
-  background: rgba(52, 211, 153, 0.15);
-  color: var(--accent-green);
+  background-color: var(--status-success-bg);
+  border-color: var(--status-success-border);
+  color: var(--status-success);
 }
 
 .verdictMISLEADING {
-  background: rgba(251, 191, 36, 0.15);
-  color: var(--accent-amber);
+  background-color: var(--status-warning-bg);
+  border-color: var(--status-warning-border);
+  color: var(--status-warning);
 }
 
 .verdictUNKNOWN {
-  background: rgba(100, 116, 139, 0.15);
-  color: var(--text-muted);
+  background-color: var(--status-neutral-bg);
+  border-color: var(--status-neutral-border);
+  color: var(--status-neutral);
 }
 
 .claimExplanation {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   color: var(--text-secondary);
   line-height: 1.6;
 }
 
-/* ── Meta Footer ───────────────────────────── */
 .meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding-top: var(--spacing-lg);
-  border-top: 1px solid var(--border-glass);
-  font-size: 0.8rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.82rem;
   color: var(--text-muted);
   flex-wrap: wrap;
   gap: var(--spacing-sm);
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 768px) {

@@ -14,7 +14,6 @@ export default function ResultCard({ report, language }: ResultCardProps) {
   const t = TRANSLATIONS[language];
   const scoreColor = getScoreColor(report.credibilityScore);
 
-  // SVG gauge calculations
   const radius = 68;
   const circumference = 2 * Math.PI * radius;
   const progress = (report.credibilityScore / 100) * circumference;
@@ -22,87 +21,96 @@ export default function ResultCard({ report, language }: ResultCardProps) {
 
   const getLocalizedVerdict = (verdict: string) => {
     const normalized = verdict.toUpperCase();
-    if (normalized.includes('HOAKS') || normalized.includes('HOAX') || normalized.includes('FAKE') || normalized.includes('FALSE')) {
-      return {
-        label: `❌ ${t.verdict_hoax}`,
-        gradient: 'var(--gradient-hoax)',
-      };
+    if (
+      normalized.includes('HOAKS') ||
+      normalized.includes('HOAX') ||
+      normalized.includes('FAKE') ||
+      normalized.includes('FALSE')
+    ) {
+      return { label: t.verdict_hoax, statusClass: styles.verdictBadgeDanger };
     }
-    if (normalized.includes('FAKTA') || normalized.includes('FACT') || normalized.includes('TRUE')) {
-      return {
-        label: `✅ ${t.verdict_fakta}`,
-        gradient: 'var(--gradient-fact)',
-      };
+    if (
+      normalized.includes('FAKTA') ||
+      normalized.includes('FACT') ||
+      normalized.includes('TRUE')
+    ) {
+      return { label: t.verdict_fakta, statusClass: styles.verdictBadgeSuccess };
     }
-    if (normalized.includes('CAMPURAN') || normalized.includes('NETRAL') || normalized.includes('MIXED') || normalized.includes('NEUTRAL')) {
-      return {
-        label: `⚠️ ${t.verdict_neutral}`,
-        gradient: 'var(--gradient-unknown)',
-      };
+    if (
+      normalized.includes('MISLEADING') ||
+      normalized.includes('CAMPURAN') ||
+      normalized.includes('NETRAL') ||
+      normalized.includes('MIXED') ||
+      normalized.includes('NEUTRAL')
+    ) {
+      return { label: t.verdict_neutral, statusClass: styles.verdictBadgeWarning };
     }
-    return {
-      label: `🔍 ${t.verdict_unverified}`,
-      gradient: 'var(--gradient-unknown)',
-    };
+    return { label: t.verdict_unverified, statusClass: styles.verdictBadgeNeutral };
   };
 
   const getClaimVerdictClass = (verdict: string) => {
     const normalized = verdict.toUpperCase();
-    if (normalized.includes('HOAKS') || normalized.includes('HOAX') || normalized.includes('FAKE') || normalized.includes('FALSE')) {
+    if (
+      normalized.includes('HOAKS') ||
+      normalized.includes('HOAX') ||
+      normalized.includes('FAKE') ||
+      normalized.includes('FALSE')
+    ) {
       return styles.verdictHOAKS;
     }
-    if (normalized.includes('FAKTA') || normalized.includes('FACT') || normalized.includes('TRUE')) {
+    if (
+      normalized.includes('FAKTA') ||
+      normalized.includes('FACT') ||
+      normalized.includes('TRUE')
+    ) {
       return styles.verdictFAKTA;
+    }
+    if (normalized.includes('MISLEADING') || normalized.includes('MENYESATKAN')) {
+      return styles.verdictMISLEADING;
     }
     return styles.verdictUNKNOWN;
   };
 
   const getConfidenceClass = (level: string) => {
     switch (level.toLowerCase()) {
-      case 'high': return styles.confidenceHigh;
-      case 'medium': return styles.confidenceMedium;
-      default: return styles.confidenceLow;
+      case 'high':
+        return styles.confidenceHigh;
+      case 'medium':
+        return styles.confidenceMedium;
+      default:
+        return styles.confidenceLow;
     }
   };
 
   const getConfidenceLabel = (level: string) => {
     switch (level.toLowerCase()) {
-      case 'high': return t.confidence_high;
-      case 'medium': return t.confidence_medium;
-      default: return t.confidence_low;
+      case 'high':
+        return t.confidence_high;
+      case 'medium':
+        return t.confidence_medium;
+      default:
+        return t.confidence_low;
     }
   };
 
   const verdictConfig = getLocalizedVerdict(report.overallVerdict);
 
   return (
-    <div className={styles.resultCard} id="result-card">
-      {/* Verdict Header */}
-      <div className={styles.verdictHeader}>
-        <div
-          className={styles.verdictBadge}
-          style={{ background: verdictConfig.gradient }}
-        >
+    <article className={styles.resultCard} id="result-card" aria-labelledby="result-title">
+      <header className={styles.verdictHeader}>
+        <div className={`${styles.verdictBadge} ${verdictConfig.statusClass}`}>
           {verdictConfig.label}
         </div>
-        <div className={styles.articleTitle}>
+        <h2 id="result-title" className={styles.articleTitle}>
           {report.articleTitle}
-        </div>
-        <div className={styles.inputSource}>
-          {report.inputType === 'url' ? '🔗' : '🖼️'} {report.inputValue}
-        </div>
-      </div>
+        </h2>
+        <div className={styles.inputSource}>{report.inputValue}</div>
+      </header>
 
-      {/* Score Gauge */}
-      <div className={styles.scoreSection}>
+      <section className={styles.scoreSection} aria-label={t.credibilityScore}>
         <div className={styles.gauge}>
-          <svg className={styles.gaugeCircle} viewBox="0 0 160 160">
-            <circle
-              className={styles.gaugeBg}
-              cx="80"
-              cy="80"
-              r={radius}
-            />
+          <svg className={styles.gaugeCircle} viewBox="0 0 160 160" aria-hidden="true">
+            <circle className={styles.gaugeBg} cx="80" cy="80" r={radius} />
             <circle
               className={styles.gaugeProgress}
               cx="80"
@@ -123,92 +131,92 @@ export default function ResultCard({ report, language }: ResultCardProps) {
 
         <div className={styles.scoreDetails}>
           <div className={styles.scoreDetail}>
-            <span className={styles.scoreDetailIcon}>📊</span>
             {t.credibilityScore}: <strong>{report.credibilityScore}/100</strong>
           </div>
           <div className={styles.scoreDetail}>
-            <span className={styles.scoreDetailIcon}>🎯</span>
             {t.confidence}:{' '}
-            <span className={`${styles.confidenceBadge} ${getConfidenceClass(report.confidenceLevel)}`}>
+            <span
+              className={`${styles.confidenceBadge} ${getConfidenceClass(report.confidenceLevel)}`}
+            >
               {getConfidenceLabel(report.confidenceLevel)}
             </span>
           </div>
           <div className={styles.scoreDetail}>
-            <span className={styles.scoreDetailIcon}>📰</span>
             {t.claimsAnalyzed}: <strong>{report.claimAssessments.length}</strong>
           </div>
           <div className={styles.scoreDetail}>
-            <span className={styles.scoreDetailIcon}>🔗</span>
             {t.sourcesFound}: <strong>{report.evidenceSources.length}</strong>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Summary */}
-      <div className={styles.summary}>
-        <h3 className={styles.sectionTitle}>📋 {t.summary}</h3>
+      <section className={styles.summary} aria-labelledby="summary-title">
+        <h3 id="summary-title" className={styles.sectionTitle}>
+          {t.summary}
+        </h3>
         <p className={styles.summaryText}>{report.summary}</p>
-      </div>
+      </section>
 
-      {/* Key Findings / Red Flags */}
       {(report.redFlags.length > 0 || report.positiveIndicators.length > 0) && (
-        <div className={styles.findingsSection}>
+        <section className={styles.findingsSection} aria-label={t.summary}>
           {report.redFlags.length > 0 && (
             <div className={`${styles.findingsList} ${styles.redFlagsList}`}>
-              <div className={`${styles.findingsListTitle} ${styles.red}`}>
-                🚩 {t.redFlags}
-              </div>
-              {report.redFlags.map((flag, i) => (
-                <div key={i} className={styles.findingItem}>
-                  <span className={styles.findingBullet}>•</span>
-                  {flag}
-                </div>
-              ))}
+              <h3 className={`${styles.findingsListTitle} ${styles.red}`}>{t.redFlags}</h3>
+              <ul className={styles.findingsItems}>
+                {report.redFlags.map((flag, i) => (
+                  <li key={i} className={styles.findingItem}>
+                    {flag}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
           {report.positiveIndicators.length > 0 && (
             <div className={`${styles.findingsList} ${styles.positiveList}`}>
-              <div className={`${styles.findingsListTitle} ${styles.green}`}>
-                ✅ {t.positiveIndicators}
-              </div>
-              {report.positiveIndicators.map((indicator, i) => (
-                <div key={i} className={styles.findingItem}>
-                  <span className={styles.findingBullet}>•</span>
-                  {indicator}
-                </div>
-              ))}
+              <h3 className={`${styles.findingsListTitle} ${styles.green}`}>
+                {t.positiveIndicators}
+              </h3>
+              <ul className={styles.findingsItems}>
+                {report.positiveIndicators.map((indicator, i) => (
+                  <li key={i} className={styles.findingItem}>
+                    {indicator}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
-        </div>
+        </section>
       )}
 
-      {/* Claim-by-Claim Assessment */}
       {report.claimAssessments.length > 0 && (
-        <div className={styles.claimsSection}>
-          <h3 className={styles.sectionTitle}>🔍 {t.claimsAssessment}</h3>
+        <section className={styles.claimsSection} aria-labelledby="claims-title">
+          <h3 id="claims-title" className={styles.sectionTitle}>
+            {t.claimsAssessment}
+          </h3>
           {report.claimAssessments.map((assessment, i) => (
-            <div key={i} className={styles.claimCard}>
+            <article key={i} className={styles.claimCard}>
               <div className={styles.claimHeader}>
-                <div className={styles.claimText}>
-                  &ldquo;{assessment.claim}&rdquo;
-                </div>
-                <span className={`${styles.claimVerdict} ${getClaimVerdictClass(assessment.verdict)}`}>
+                <div className={styles.claimText}>&ldquo;{assessment.claim}&rdquo;</div>
+                <span
+                  className={`${styles.claimVerdict} ${getClaimVerdictClass(assessment.verdict)}`}
+                >
                   {assessment.verdict}
                 </span>
               </div>
-              <p className={styles.claimExplanation}>
-                {assessment.explanation}
-              </p>
-            </div>
+              <p className={styles.claimExplanation}>{assessment.explanation}</p>
+            </article>
           ))}
-        </div>
+        </section>
       )}
 
-      {/* Meta Footer */}
-      <div className={styles.meta}>
-        <span>🕐 {t.analyzedAt}: {formatDate(report.analyzedAt, language)}</span>
-        <span>⏱️ {t.analysisTime}: {(report.analysisTimeMs / 1000).toFixed(1)}s</span>
-      </div>
-    </div>
+      <footer className={styles.meta}>
+        <span>
+          {t.analyzedAt}: {formatDate(report.analyzedAt, language)}
+        </span>
+        <span>
+          {t.analysisTime}: {(report.analysisTimeMs / 1000).toFixed(1)}s
+        </span>
+      </footer>
+    </article>
   );
 }

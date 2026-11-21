@@ -1,38 +1,49 @@
-/* LanguageSelector.module.css */
-
 .wrapper {
-  position: absolute;
-  top: var(--spacing-lg);
-  right: var(--spacing-lg);
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--spacing-lg);
+  position: relative;
   z-index: 100;
 }
 
+.selectorContainer {
+  position: relative;
+}
+
 .selectorButton {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: 0.55rem 1rem;
-  background: var(--bg-card);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--border-glass);
+  min-height: 44px;
+  padding: 0.5rem 0.9rem;
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   color: var(--text-primary);
-  font-size: 0.85rem;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all var(--transition-base);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .selectorButton:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-color-hover);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+.langCode {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .arrow {
-  font-size: 0.75rem;
-  opacity: 0.7;
-  transition: transform 0.2s ease;
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  transition: transform var(--transition-fast);
 }
 
 .arrowOpen {
@@ -41,70 +52,45 @@
 
 .dropdown {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 6px);
   right: 0;
-  width: 200px;
-  background: var(--bg-card);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--border-glass);
+  width: 210px;
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   padding: 4px;
-  animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  transform-origin: top right;
 }
 
 .option {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: 0.6rem 0.8rem;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: all var(--transition-base);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
   width: 100%;
 }
 
 .option:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background-color: var(--surface-hover);
   color: var(--text-primary);
 }
 
 .optionActive {
-  background: rgba(139, 92, 246, 0.15);
-  color: var(--accent-purple-light);
-}
-
-.flag {
-  font-size: 1.1rem;
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-@media (max-width: 640px) {
-  .wrapper {
-    position: static;
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: var(--spacing-md);
-    padding-right: var(--spacing-md);
-  }
+  background-color: var(--surface-secondary);
+  color: var(--text-primary);
+  font-weight: 600;
 }

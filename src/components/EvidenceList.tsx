@@ -16,48 +16,58 @@ export default function EvidenceList({ report, language }: EvidenceListProps) {
 
   const getStanceClass = (stance: string) => {
     switch (stance.toLowerCase()) {
-      case 'supports': return styles.stanceSupports;
-      case 'contradicts': return styles.stanceContradicts;
-      default: return styles.stanceNeutral;
+      case 'supports':
+        return styles.stanceSupports;
+      case 'contradicts':
+        return styles.stanceContradicts;
+      default:
+        return styles.stanceNeutral;
     }
   };
 
   const getBadgeClass = (stance: string) => {
     switch (stance.toLowerCase()) {
-      case 'supports': return styles.badgeSupports;
-      case 'contradicts': return styles.badgeContradicts;
-      default: return styles.badgeNeutral;
+      case 'supports':
+        return styles.badgeSupports;
+      case 'contradicts':
+        return styles.badgeContradicts;
+      default:
+        return styles.badgeNeutral;
     }
   };
 
   const getStanceLabel = (stance: string) => {
     switch (stance.toLowerCase()) {
-      case 'supports': return t.stance_supports;
-      case 'contradicts': return t.stance_contradicts;
-      default: return t.stance_neutral;
+      case 'supports':
+        return t.stance_supports;
+      case 'contradicts':
+        return t.stance_contradicts;
+      default:
+        return t.stance_neutral;
     }
   };
 
   return (
     <>
-      {/* Fact Check Results (if any) */}
       {factCheckResults.length > 0 && (
-        <div className={styles.factCheckSection}>
-          <h3 className={styles.sectionTitle}>🏛️ {t.officialFactCheck}</h3>
+        <section className={styles.factCheckSection} aria-labelledby="factcheck-title">
+          <h3 id="factcheck-title" className={styles.sectionTitle}>
+            {t.officialFactCheck}
+          </h3>
           {factCheckResults.map((fc, i) => (
-            <div key={i} className={styles.factCheckCard}>
+            <article key={i} className={styles.factCheckCard}>
               <div className={styles.factCheckClaim}>
                 &ldquo;{fc.text}&rdquo;
                 {fc.claimant && (
-                  <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
-                    {' '}— {fc.claimant}
-                  </span>
+                  <span className={styles.factCheckClaimant}> — {fc.claimant}</span>
                 )}
               </div>
               {fc.reviews.map((review, j) => (
                 <div key={j} className={styles.factCheckReview}>
                   <span className={styles.reviewRating}>{review.rating}</span>
-                  <span>{language === 'id' ? 'oleh' : 'by'} {review.publisher}</span>
+                  <span>
+                    {language === 'id' ? 'oleh' : 'by'} {review.publisher}
+                  </span>
                   {review.url && (
                     <a
                       href={review.url}
@@ -65,78 +75,75 @@ export default function EvidenceList({ report, language }: EvidenceListProps) {
                       rel="noopener noreferrer"
                       className={styles.reviewLink}
                     >
-                      {language === 'id' ? 'Baca' : 'Read'} →
+                      {language === 'id' ? 'Baca selengkapnya' : 'Read more'}
                     </a>
                   )}
                 </div>
               ))}
-            </div>
+            </article>
           ))}
-        </div>
+        </section>
       )}
 
-      {/* Evidence Sources */}
-      <div className={styles.evidenceSection}>
-        <h3 className={styles.sectionTitle}>
-          🌐 {t.foundSources} ({evidenceSources.length})
+      <section className={styles.evidenceSection} aria-labelledby="evidence-title">
+        <h3 id="evidence-title" className={styles.sectionTitle}>
+          {t.foundSources} ({evidenceSources.length})
         </h3>
 
         {evidenceSources.length > 0 ? (
           <div className={styles.evidenceGrid}>
             {evidenceSources.map((source, i) => (
-              <a
-                key={i}
-                href={source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.evidenceCard}
-              >
-                <div className={`${styles.stanceIndicator} ${getStanceClass(source.stance)}`} />
-                <div className={styles.evidenceContent}>
-                  <div className={styles.evidenceHeader}>
-                    <div className={styles.evidenceTitle}>{source.title}</div>
-                    <span className={`${styles.stanceBadge} ${getBadgeClass(source.stance)}`}>
-                      {getStanceLabel(source.stance)}
-                    </span>
-                  </div>
-                  <div className={styles.evidenceMeta}>
-                    <span className={styles.evidenceSite}>
-                      🌐 {source.siteName || getDomain(source.url)}
-                    </span>
-                    {source.publishedDate && (
-                      <span>📅 {source.publishedDate}</span>
+              <article key={i}>
+                <a
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.evidenceCard}
+                >
+                  <div className={`${styles.stanceIndicator} ${getStanceClass(source.stance)}`} />
+                  <div className={styles.evidenceContent}>
+                    <div className={styles.evidenceHeader}>
+                      <div className={styles.evidenceTitle}>{source.title}</div>
+                      <span className={`${styles.stanceBadge} ${getBadgeClass(source.stance)}`}>
+                        {getStanceLabel(source.stance)}
+                      </span>
+                    </div>
+                    <div className={styles.evidenceMeta}>
+                      <span className={styles.evidenceSite}>
+                        {source.siteName || getDomain(source.url)}
+                      </span>
+                      {source.publishedDate && <span>{source.publishedDate}</span>}
+                    </div>
+                    <div className={styles.evidenceSnippet}>{source.snippet}</div>
+                    {source.similarityScore > 0 && (
+                      <div className={styles.similarityBar}>
+                        <span>{t.similarity}:</span>
+                        <div className={styles.similarityTrack}>
+                          <div
+                            className={styles.similarityFill}
+                            style={{
+                              width: `${source.similarityScore}%`,
+                              backgroundColor:
+                                source.similarityScore > 70
+                                  ? 'var(--status-success)'
+                                  : source.similarityScore > 40
+                                    ? 'var(--status-warning)'
+                                    : 'var(--accent-link)',
+                            }}
+                          />
+                        </div>
+                        <span>{source.similarityScore}%</span>
+                      </div>
                     )}
                   </div>
-                  <div className={styles.evidenceSnippet}>{source.snippet}</div>
-                  {source.similarityScore > 0 && (
-                    <div className={styles.similarityBar}>
-                      <span>{t.similarity}:</span>
-                      <div className={styles.similarityTrack}>
-                        <div
-                          className={styles.similarityFill}
-                          style={{
-                            width: `${source.similarityScore}%`,
-                            background: source.similarityScore > 70
-                              ? 'var(--accent-green)'
-                              : source.similarityScore > 40
-                                ? 'var(--accent-amber)'
-                                : 'var(--accent-blue)',
-                          }}
-                        />
-                      </div>
-                      <span>{source.similarityScore}%</span>
-                    </div>
-                  )}
-                </div>
-              </a>
+                </a>
+              </article>
             ))}
           </div>
         ) : (
-          <div className={styles.emptyState}>
-            {t.noSources}
-          </div>
+          <div className={styles.emptyState}>{t.noSources}</div>
         )}
-      </div>
+      </section>
     </>
   );
 }

@@ -9,38 +9,23 @@ export default function HeroSection({ language }: HeroSectionProps) {
   const t = TRANSLATIONS[language];
 
   return (
-    <section className={styles.hero}>
-      <div className={styles.badge}>
-        <span className={styles.badgeDot} />
-        {t.badge}
-      </div>
+    <section className={styles.hero} aria-labelledby="hero-heading">
+      <div className={styles.badge}>{t.badge}</div>
 
-      <h1 className={styles.title}>
+      <h1 id="hero-heading" className={styles.title}>
         {t.titleMain}
         <br />
-        <span className={styles.titleGradient}>{t.titleSub}</span>
+        <span className={styles.titleEmphasis}>{t.titleSub}</span>
       </h1>
 
       <p className={styles.subtitle}>{t.subtitle}</p>
 
-      <div className={styles.features}>
-        <div className={styles.feature}>
-          <span className={styles.featureIcon}>🔗</span>
-          {t.featureUrl}
-        </div>
-        <div className={styles.feature}>
-          <span className={styles.featureIcon}>🖼️</span>
-          {t.featureImg}
-        </div>
-        <div className={styles.feature}>
-          <span className={styles.featureIcon}>🌐</span>
-          {t.featureLang}
-        </div>
-        <div className={styles.feature}>
-          <span className={styles.featureIcon}>🤖</span>
-          {t.featureEngine}
-        </div>
-      </div>
+      <ul className={styles.features}>
+        <li className={styles.feature}>{t.featureUrl}</li>
+        <li className={styles.feature}>{t.featureImg}</li>
+        <li className={styles.feature}>{t.featureLang}</li>
+        <li className={styles.feature}>{t.featureEngine}</li>
+      </ul>
     </section>
   );
 }

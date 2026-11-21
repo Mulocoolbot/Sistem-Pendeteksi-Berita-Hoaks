@@ -24,15 +24,16 @@ export default function HomePage() {
   const t = TRANSLATIONS[language];
 
   return (
-    <main style={{ position: 'relative' }}>
-      <div className="container">
+    <div className="container">
+      <header>
         <LanguageSelector
           currentLanguage={language}
           onLanguageChange={(lang) => setLanguage(lang)}
         />
-
         <HeroSection language={language} />
+      </header>
 
+      <main id="main-content">
         <InputPanel
           language={language}
           onAnalyzeUrl={analyzeUrl}
@@ -40,38 +41,28 @@ export default function HomePage() {
           isAnalyzing={isAnalyzing}
         />
 
-        {isAnalyzing && currentStep !== 'idle' && (
-          <AnalysisTimeline currentStep={currentStep} language={language} />
-        )}
-
-        <div ref={resultRef}>
-          {report && (
-            <>
-              <ResultCard report={report} language={language} />
-              <EvidenceList report={report} language={language} />
-
-              <footer
-                style={{
-                  textAlign: 'center',
-                  padding: 'var(--spacing-2xl) 0',
-                  color: 'var(--text-muted)',
-                  fontSize: '0.8rem',
-                  borderTop: '1px solid var(--border-glass)',
-                  maxWidth: '900px',
-                  margin: '0 auto',
-                }}
-              >
-                <p style={{ marginBottom: '0.5rem' }}>
-                  ⚠️ {t.disclaimer}
-                </p>
-                <p>
-                  {t.poweredBy}
-                </p>
-              </footer>
-            </>
+        <div aria-live="polite" aria-busy={isAnalyzing}>
+          {isAnalyzing && currentStep !== 'idle' && (
+            <AnalysisTimeline currentStep={currentStep} language={language} />
           )}
+
+          <div ref={resultRef}>
+            {report && (
+              <>
+                <ResultCard report={report} language={language} />
+                <EvidenceList report={report} language={language} />
+              </>
+            )}
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+
+      {report && (
+        <footer className="site-footer">
+          <p className="site-footer-disclaimer">{t.disclaimer}</p>
+          <p>{t.poweredBy}</p>
+        </footer>
+      )}
+    </div>
   );
 }
