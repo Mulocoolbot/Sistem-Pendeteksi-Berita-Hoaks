@@ -1,9 +1,11 @@
+import { APP_CONFIG } from '@/lib/config';
+
 export function getClaimExtractionPrompt(title: string, content: string): string {
   return `Extract 1 to 5 verifiable factual claims from the news article below. Ignore opinions, speculation, and subjective statements.
 
 ARTICLE TITLE: ${title}
 ARTICLE CONTENT:
-${content.substring(0, 4000)}
+${content.substring(0, APP_CONFIG.limits.claimPromptContentMaxLength)}
 
 Return valid JSON only:
 {
@@ -45,7 +47,7 @@ export function getInvestigationPrompt(
   return `Investigate whether the article below is factual or misinformation using the provided evidence. Evaluate source credibility, cross-source consistency, red flags (sensationalism, anonymous sources, factual contradictions, manipulated context), and positive indicators. If evidence is insufficient, use "BELUM TERVERIFIKASI".
 
 TITLE: ${articleTitle}
-CONTENT: ${articleContent.substring(0, 3000)}
+CONTENT: ${articleContent.substring(0, APP_CONFIG.limits.investigationPromptContentMaxLength)}
 
 KEY CLAIMS:
 ${claims.map((c, i) => `${i + 1}. ${c}`).join('\n')}

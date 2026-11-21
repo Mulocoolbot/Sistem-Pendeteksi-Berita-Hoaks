@@ -2,25 +2,19 @@
 
 import { useState, useRef, useCallback } from 'react';
 import styles from './InputPanel.module.css';
-import { fileToBase64 } from '@/lib/utils/sanitize';
-import type { InvestigationReport } from '@/lib/types';
 import { TRANSLATIONS, type LanguageCode } from '@/lib/utils/translations';
 
 interface InputPanelProps {
   language: LanguageCode;
-  onAnalysisStart: () => void;
-  onAnalysisComplete: (report: InvestigationReport) => void;
-  onAnalysisError: (error: string) => void;
-  onStepChange: (step: string) => void;
+  onAnalyzeUrl: (url: string) => Promise<void>;
+  onAnalyzeImage: (file: File) => Promise<void>;
   isAnalyzing: boolean;
 }
 
 export default function InputPanel({
   language,
-  onAnalysisStart,
-  onAnalysisComplete,
-  onAnalysisError,
-  onStepChange,
+  onAnalyzeUrl,
+  onAnalyzeImage,
   isAnalyzing,
 }: InputPanelProps) {
   const t = TRANSLATIONS[language];
@@ -32,7 +26,6 @@ export default function InputPanel({
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Handle URL submission
   const handleUrlSubmit = useCallback(async () => {
     if (!url.trim()) {
       setError(language === 'id' ? 'Masukkan URL berita terlebih dahulu.' : 'Please enter a news URL first.');
@@ -40,35 +33,14 @@ export default function InputPanel({
     }
 
     setError(null);
-    onAnalysisStart();
-
     try {
-      onStepChange('extracting');
-      const response = await fetch('/api/analyze/url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: url.trim(),
-          language,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || (language === 'id' ? 'Analisis gagal.' : 'Analysis failed.'));
-      }
-
-      onStepChange('complete');
-      onAnalysisComplete(data.data);
+      await onAnalyzeUrl(url.trim());
     } catch (err) {
       const message = err instanceof Error ? err.message : (language === 'id' ? 'Terjadi kesalahan.' : 'An error occurred.');
       setError(message);
-      onAnalysisError(message);
     }
-  }, [url, language, onAnalysisStart, onAnalysisComplete, onAnalysisError, onStepChange]);
+  }, [url, language, onAnalyzeUrl]);
 
-  // Handle Image submission
   const handleImageSubmit = useCallback(async () => {
     if (!imageFile) {
       setError(language === 'id' ? 'Upload gambar berita terlebih dahulu.' : 'Please upload a news image first.');
@@ -76,36 +48,13 @@ export default function InputPanel({
     }
 
     setError(null);
-    onAnalysisStart();
-
     try {
-      onStepChange('extracting');
-      const base64 = await fileToBase64(imageFile);
-
-      const response = await fetch('/api/analyze/image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageBase64: base64,
-          mimeType: imageFile.type,
-          language,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || (language === 'id' ? 'Analisis gambar gagal.' : 'Image analysis failed.'));
-      }
-
-      onStepChange('complete');
-      onAnalysisComplete(data.data);
+      await onAnalyzeImage(imageFile);
     } catch (err) {
       const message = err instanceof Error ? err.message : (language === 'id' ? 'Terjadi kesalahan.' : 'An error occurred.');
       setError(message);
-      onAnalysisError(message);
     }
-  }, [imageFile, language, onAnalysisStart, onAnalysisComplete, onAnalysisError, onStepChange]);
+  }, [imageFile, language, onAnalyzeImage]);
 
   // Handle file selection
   const handleFileSelect = (file: File) => {

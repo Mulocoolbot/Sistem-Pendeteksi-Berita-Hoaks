@@ -2,7 +2,6 @@ export type LanguageCode = 'en' | 'id' | 'zh' | 'ja' | 'es' | 'hi' | 'fr' | 'pt'
 
 export interface Language {
   code: LanguageCode;
-  name: string; // Native name
   name: string;
   flag: string;
 }
@@ -77,8 +76,7 @@ export const LANGUAGES: Language[] = [
   { code: 'pt', name: 'Português', flag: '🇵🇹' },
 ];
 
-export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
-  export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
+export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
     id: {
       // Hero
       badge: 'AI-Powered Fact Checker',

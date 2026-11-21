@@ -1,7 +1,9 @@
 import axios, { type AxiosRequestConfig } from 'axios';
 import * as cheerio from 'cheerio';
+import { APP_CONFIG } from '@/lib/config';
 import type { ArticleData } from '@/lib/types';
-import { stripHtml, getDomain } from '@/lib/utils/sanitize';
+import { AppError } from '@/lib/utils/errors';
+import { getDomain, isRecord, stripHtml } from '@/lib/utils/sanitize';
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
@@ -37,11 +39,27 @@ function formatErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function isUnreachableHostError(error: unknown): boolean {
+  if (!isRecord(error)) return false;
+  const code = typeof error.code === 'string' ? error.code : '';
+  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN' || code === 'ECONNREFUSED') {
+    return true;
+  }
+  if (typeof error.message === 'string') {
+    return (
+      error.message.includes('ENOTFOUND') ||
+      error.message.includes('EAI_AGAIN') ||
+      error.message.includes('getaddrinfo')
+    );
+  }
+  return false;
+}
+
 async function fetchHtml(url: string): Promise<string> {
   const config: AxiosRequestConfig = {
     headers: getBrowserHeaders(url),
-    timeout: 20000,
-    maxRedirects: 5,
+    timeout: APP_CONFIG.timeouts.directScrapeMs,
+    maxRedirects: APP_CONFIG.limits.maxRedirects,
     validateStatus: (status) => status < 500,
   };
 
@@ -52,12 +70,19 @@ async function fetchHtml(url: string): Promise<string> {
     }
   } catch (error: unknown) {
     console.warn(`Direct fetch failed for ${url}:`, formatErrorMessage(error));
+    if (isUnreachableHostError(error)) {
+      throw AppError.unprocessable(
+        `Domain ${getDomain(url)} tidak ditemukan atau tidak dapat dijangkau.`,
+        'UNREACHABLE_DOMAIN'
+      );
+    }
   }
 
   try {
     const cacheUrl = `https://webcache.googleusercontent.com/search?q=cache:${encodeURIComponent(url)}`;
     const response = await axios.get<string>(cacheUrl, {
       ...config,
+      timeout: APP_CONFIG.timeouts.cacheScrapeMs,
       headers: {
         ...getBrowserHeaders(cacheUrl),
         Referer: 'https://www.google.com/',
@@ -76,8 +101,8 @@ async function fetchHtml(url: string): Promise<string> {
         'User-Agent': getRandomUserAgent(),
         Accept: 'text/html,*/*',
       },
-      timeout: 15000,
-      maxRedirects: 5,
+      timeout: APP_CONFIG.timeouts.simpleScrapeMs,
+      maxRedirects: APP_CONFIG.limits.maxRedirects,
     });
     if (typeof simpleResponse.data === 'string' && simpleResponse.data.length > 0) {
       return simpleResponse.data;
@@ -86,7 +111,10 @@ async function fetchHtml(url: string): Promise<string> {
     console.warn(`Simple fetch fallback failed for ${url}:`, formatErrorMessage(error));
   }
 
-  throw new Error(`Tidak bisa mengambil konten dari ${getDomain(url)} setelah beberapa percobaan.`);
+  throw AppError.unprocessable(
+    `Tidak bisa mengambil konten dari ${getDomain(url)} setelah beberapa percobaan.`,
+    'SCRAPE_FAILED'
+  );
 }
 
 export async function scrapeArticle(url: string): Promise<ArticleData> {
@@ -124,7 +152,10 @@ export async function scrapeArticle(url: string): Promise<ArticleData> {
       $('html').attr('lang') ||
       null;
 
-    const finalContent = content.length > 50 ? content : description || title;
+    const finalContent =
+      content.length > APP_CONFIG.limits.minArticleContentLength
+        ? content
+        : description || title;
 
     return {
       url,
@@ -138,16 +169,20 @@ export async function scrapeArticle(url: string): Promise<ArticleData> {
       language,
     };
   } catch (error: unknown) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     console.error(`Failed to scrape ${url}:`, error);
-    throw new Error(
-      `Gagal mengambil konten dari ${getDomain(url)}. Situs mungkin memblokir akses atau tidak tersedia.`
+    throw AppError.unprocessable(
+      `Gagal mengambil konten dari ${getDomain(url)}. Situs mungkin memblokir akses atau tidak tersedia.`,
+      'SCRAPE_FAILED'
     );
   }
 }
 
 export async function scrapeMultipleArticles(
   urls: string[],
-  maxArticles: number = 5
+  maxArticles: number = APP_CONFIG.limits.maxRelatedArticlesToScrape
 ): Promise<ArticleData[]> {
   const limited = urls.slice(0, maxArticles);
   const results: ArticleData[] = [];
@@ -155,7 +190,7 @@ export async function scrapeMultipleArticles(
   for (const url of limited) {
     try {
       const article = await scrapeArticle(url);
-      if (article.content.length > 50) {
+      if (article.content.length > APP_CONFIG.limits.minArticleContentLength) {
         results.push(article);
       }
     } catch (error: unknown) {
@@ -226,7 +261,7 @@ function extractContent($: cheerio.CheerioAPI): string {
     return paragraphs.join('\n\n');
   }
 
-  return stripHtml($('body').html() || '').substring(0, 5000);
+  return stripHtml($('body').html() || '').substring(0, APP_CONFIG.limits.bodyFallbackMaxLength);
 }
 
 function extractDescription($: cheerio.CheerioAPI): string {
