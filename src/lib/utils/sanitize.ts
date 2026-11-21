@@ -47,7 +47,7 @@ export function getDomain(url: string): string {
 
 export function safeJsonParse<T>(
   text: string,
-  validator?: (val: unknown) => val is T
+  validator: (val: unknown) => val is T
 ): T | null {
   try {
     // LLMs sometimes wrap JSON in markdown fences or prose; extract the outermost object.
@@ -55,8 +55,7 @@ export function safeJsonParse<T>(
     if (!jsonMatch) return null;
 
     const parsed: unknown = JSON.parse(jsonMatch[0]);
-    if (validator && !validator(parsed)) return null;
-    return parsed as T;
+    return validator(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -64,18 +63,14 @@ export function safeJsonParse<T>(
 
 export function formatDate(dateStr: string | null, language: string = 'id'): string {
   if (!dateStr) return language === 'id' ? 'Tanggal tidak diketahui' : 'Unknown date';
-  try {
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return dateStr;
-    const locale = LOCALE_MAP[language] || 'en-US';
-    return date.toLocaleDateString(locale, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
-    return dateStr;
-  }
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return dateStr;
+  const locale = LOCALE_MAP[language] || 'en-US';
+  return date.toLocaleDateString(locale, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 }
 
 export function getScoreColor(score: number): string {

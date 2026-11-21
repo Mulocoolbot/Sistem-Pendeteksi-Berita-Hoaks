@@ -1,9 +1,17 @@
-export interface EnvConfig {
+interface EnvConfig {
   groqApiKey: string;
   googleFactCheckApiKey: string;
   googleCustomSearchApiKey: string;
   googleSearchEngineId: string;
 }
+
+const ALLOWED_IMAGE_MIMES: readonly string[] = [
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/webp',
+  'image/gif',
+];
 
 export function getEnvConfig(): EnvConfig {
   return {
@@ -19,7 +27,6 @@ export const APP_CONFIG = {
     textModel: 'openai/gpt-oss-120b',
     fallbackTextModel: 'openai/gpt-oss-20b',
     visionModel: 'qwen/qwen3.8-27b',
-    fallbackVisionModel: null as string | null,
     temperature: 0.3,
     maxTokens: 4096,
   },
@@ -54,12 +61,6 @@ export const APP_CONFIG = {
     bodyFallbackMaxLength: 5000,
     claimPromptContentMaxLength: 4000,
     investigationPromptContentMaxLength: 3000,
-    allowedImageMimes: [
-      'image/png',
-      'image/jpeg',
-      'image/jpg',
-      'image/webp',
-      'image/gif',
-    ] as readonly string[],
+    allowedImageMimes: ALLOWED_IMAGE_MIMES,
   },
 } as const;

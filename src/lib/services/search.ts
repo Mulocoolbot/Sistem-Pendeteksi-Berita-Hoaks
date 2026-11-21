@@ -78,14 +78,13 @@ async function searchYahoo(
   }
 }
 
-export async function searchRelatedNews(
+async function searchRelatedNews(
   query: string,
   numResults: number = APP_CONFIG.limits.defaultSearchResults
 ): Promise<SearchResult[]> {
   const { googleCustomSearchApiKey, googleSearchEngineId } = getEnvConfig();
 
   if (!googleCustomSearchApiKey || !googleSearchEngineId) {
-    console.warn('Google Custom Search API not configured. Falling back to Yahoo search.');
     return searchYahoo(query, numResults);
   }
 
@@ -128,21 +127,17 @@ export async function searchMultipleQueries(
   const seenUrls = new Set<string>();
 
   for (const query of queries.slice(0, APP_CONFIG.limits.maxSearchQueriesToRun)) {
-    try {
-      if (allResults.length > 0) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, APP_CONFIG.timeouts.searchThrottleDelayMs)
-        );
+    if (allResults.length > 0) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, APP_CONFIG.timeouts.searchThrottleDelayMs)
+      );
+    }
+    const results = await searchRelatedNews(query, resultsPerQuery);
+    for (const result of results) {
+      if (!seenUrls.has(result.link)) {
+        seenUrls.add(result.link);
+        allResults.push(result);
       }
-      const results = await searchRelatedNews(query, resultsPerQuery);
-      for (const result of results) {
-        if (!seenUrls.has(result.link)) {
-          seenUrls.add(result.link);
-          allResults.push(result);
-        }
-      }
-    } catch (error: unknown) {
-      console.warn(`Search failed for query "${query}":`, error);
     }
   }
 

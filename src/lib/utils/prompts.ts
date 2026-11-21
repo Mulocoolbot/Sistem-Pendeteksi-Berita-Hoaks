@@ -1,40 +1,20 @@
 import { APP_CONFIG } from '@/lib/config';
 
 export function getClaimExtractionPrompt(title: string, content: string): string {
-  return `Extract 1 to 5 verifiable factual claims from the news article below. Ignore opinions, speculation, and subjective statements.
+  return `Extract 1-5 verifiable factual claims (exclude opinions and speculation).
 
-ARTICLE TITLE: ${title}
-ARTICLE CONTENT:
-${content.substring(0, APP_CONFIG.limits.claimPromptContentMaxLength)}
+TITLE: ${title}
+CONTENT: ${content.substring(0, APP_CONFIG.limits.claimPromptContentMaxLength)}
 
-Return valid JSON only:
-{
-  "claims": [
-    {
-      "claim": "Specific verifiable claim",
-      "context": "Brief context from the article",
-      "importance": "high|medium|low"
-    }
-  ]
-}`;
+JSON only:
+{"claims":[{"claim":"...","context":"...","importance":"high|medium|low"}]}`;
 }
 
 export function getImageAnalysisPrompt(): string {
-  return `Analyze this image for news verification:
-1. Extract all visible text (headlines, body, captions, watermarks, dates, authors).
-2. Classify contentType as one of: news-screenshot, social-media, poster, meme, other.
-3. Identify the media source or outlet if visible, otherwise null.
-4. Identify any visible date or timestamp, otherwise null.
-5. Provide a brief summary of the image content.
+  return `Extract all visible text, classify contentType, detect outlet/source and date if visible (else null), and summarize.
 
-Return valid JSON only:
-{
-  "extractedText": "All visible text",
-  "contentType": "news-screenshot|social-media|poster|meme|other",
-  "detectedSource": "Source name or null",
-  "detectedDate": "Detected date or null",
-  "summary": "Brief summary"
-}`;
+JSON only:
+{"extractedText":"...","contentType":"news-screenshot|social-media|poster|meme|other","detectedSource":"...|null","detectedDate":"...|null","summary":"..."}`;
 }
 
 export function getInvestigationPrompt(
@@ -44,58 +24,38 @@ export function getInvestigationPrompt(
   factCheckData: string,
   relatedArticles: string
 ): string {
-  return `Investigate whether the article below is factual or misinformation using the provided evidence. Evaluate source credibility, cross-source consistency, red flags (sensationalism, anonymous sources, factual contradictions, manipulated context), and positive indicators. If evidence is insufficient, use "BELUM TERVERIFIKASI".
+  return `Investigate article credibility from the evidence. Evaluate source reliability, cross-source consistency, red flags, and positive indicators. Use "BELUM TERVERIFIKASI" if evidence is insufficient. Scores (credibilityScore, confidence, similarityScore) are 0-100.
 
 TITLE: ${articleTitle}
 CONTENT: ${articleContent.substring(0, APP_CONFIG.limits.investigationPromptContentMaxLength)}
-
-KEY CLAIMS:
+CLAIMS:
 ${claims.map((c, i) => `${i + 1}. ${c}`).join('\n')}
-
-EXISTING FACT-CHECKS:
-${factCheckData || 'None found.'}
-
+FACT-CHECKS:
+${factCheckData || 'None.'}
 RELATED ARTICLES:
-${relatedArticles || 'None found.'}
+${relatedArticles || 'None.'}
 
-Return valid JSON only:
+JSON only:
 {
   "overallVerdict": "HOAKS|FAKTA|MISLEADING|BELUM TERVERIFIKASI",
   "credibilityScore": 0,
   "confidenceLevel": "high|medium|low",
-  "summary": "2-3 paragraph investigation summary",
-  "claimAssessments": [
-    {
-      "claim": "Claim text",
-      "verdict": "HOAKS|FAKTA|MISLEADING|BELUM TERVERIFIKASI",
-      "confidence": 0,
-      "explanation": "Assessment rationale",
-      "supportingSources": ["Source title or URL"],
-      "contradictingSources": ["Source title or URL"]
-    }
-  ],
-  "keyFindings": ["Finding 1"],
-  "redFlags": ["Red flag 1"],
-  "positiveIndicators": ["Positive indicator 1"],
-  "sourceEvaluations": [
-    {
-      "scrapedIndex": 1,
-      "similarityScore": 0,
-      "stance": "supports|contradicts|neutral"
-    }
-  ]
+  "summary": "2-3 paragraphs",
+  "claimAssessments": [{"claim":"...","verdict":"HOAKS|FAKTA|MISLEADING|BELUM TERVERIFIKASI","confidence":0,"explanation":"...","supportingSources":["..."],"contradictingSources":["..."]}],
+  "keyFindings": ["..."],
+  "redFlags": ["..."],
+  "positiveIndicators": ["..."],
+  "sourceEvaluations": [{"scrapedIndex":1,"similarityScore":0,"stance":"supports|contradicts|neutral"}]
 }`;
 }
 
 export function getSearchQueryPrompt(claims: string[], articleTitle: string): string {
-  return `Generate 3 to 5 concise search queries (3-8 words each) to find corroborating or contradicting news coverage for these claims. Focus on key facts, names, places, and events.
+  return `Generate 3-5 search queries (3-8 words each) using key facts, names, places, and events to verify these claims.
 
-ARTICLE TITLE: ${articleTitle}
+TITLE: ${articleTitle}
 CLAIMS:
 ${claims.map((c, i) => `${i + 1}. ${c}`).join('\n')}
 
-Return valid JSON only:
-{
-  "queries": ["query 1", "query 2", "query 3"]
-}`;
+JSON only:
+{"queries":["..."]}`;
 }

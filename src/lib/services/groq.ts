@@ -32,23 +32,36 @@ const LANGUAGE_NAMES: Record<string, string> = {
   id: 'Indonesian (Bahasa Indonesia)',
 };
 
-const VALID_VERDICTS: ReadonlySet<Verdict> = new Set([
-  'HOAKS',
-  'FAKTA',
-  'MISLEADING',
-  'BELUM TERVERIFIKASI',
-]);
+function isVerdict(value: unknown): value is Verdict {
+  return (
+    value === 'HOAKS' ||
+    value === 'FAKTA' ||
+    value === 'MISLEADING' ||
+    value === 'BELUM TERVERIFIKASI'
+  );
+}
 
-const VALID_CONFIDENCE: ReadonlySet<ConfidenceLevel> = new Set(['high', 'medium', 'low']);
-const VALID_IMPORTANCE: ReadonlySet<ClaimImportance> = new Set(['high', 'medium', 'low']);
-const VALID_STANCE: ReadonlySet<SourceStance> = new Set(['supports', 'contradicts', 'neutral']);
-const VALID_CONTENT_TYPES: ReadonlySet<ImageContentType> = new Set([
-  'news-screenshot',
-  'social-media',
-  'poster',
-  'meme',
-  'other',
-]);
+function isConfidenceLevel(value: unknown): value is ConfidenceLevel {
+  return value === 'high' || value === 'medium' || value === 'low';
+}
+
+function isClaimImportance(value: unknown): value is ClaimImportance {
+  return value === 'high' || value === 'medium' || value === 'low';
+}
+
+function isSourceStance(value: unknown): value is SourceStance {
+  return value === 'supports' || value === 'contradicts' || value === 'neutral';
+}
+
+function isImageContentType(value: unknown): value is ImageContentType {
+  return (
+    value === 'news-screenshot' ||
+    value === 'social-media' ||
+    value === 'poster' ||
+    value === 'meme' ||
+    value === 'other'
+  );
+}
 
 function getGroqClient(): Groq {
   const { groqApiKey } = getEnvConfig();
@@ -86,38 +99,23 @@ function toStringArray(value: unknown): string[] {
 }
 
 function toVerdict(value: unknown): Verdict {
-  if (typeof value === 'string' && VALID_VERDICTS.has(value as Verdict)) {
-    return value as Verdict;
-  }
-  return 'BELUM TERVERIFIKASI';
+  return isVerdict(value) ? value : 'BELUM TERVERIFIKASI';
 }
 
 function toConfidenceLevel(value: unknown): ConfidenceLevel {
-  if (typeof value === 'string' && VALID_CONFIDENCE.has(value as ConfidenceLevel)) {
-    return value as ConfidenceLevel;
-  }
-  return 'low';
+  return isConfidenceLevel(value) ? value : 'low';
 }
 
 function toClaimImportance(value: unknown): ClaimImportance {
-  if (typeof value === 'string' && VALID_IMPORTANCE.has(value as ClaimImportance)) {
-    return value as ClaimImportance;
-  }
-  return 'medium';
+  return isClaimImportance(value) ? value : 'medium';
 }
 
 function toSourceStance(value: unknown): SourceStance {
-  if (typeof value === 'string' && VALID_STANCE.has(value as SourceStance)) {
-    return value as SourceStance;
-  }
-  return 'neutral';
+  return isSourceStance(value) ? value : 'neutral';
 }
 
 function toImageContentType(value: unknown): ImageContentType {
-  if (typeof value === 'string' && VALID_CONTENT_TYPES.has(value as ImageContentType)) {
-    return value as ImageContentType;
-  }
-  return 'other';
+  return isImageContentType(value) ? value : 'other';
 }
 
 function normalizeClaimAssessments(value: unknown): ClaimAssessment[] {
@@ -178,7 +176,6 @@ async function chatCompletion(prompt: string, languageCode: string = 'id'): Prom
     return result.choices[0]?.message?.content || '';
   } catch (error: unknown) {
     if (shouldUseFallbackModel(error)) {
-      console.warn(`Primary model ${textModel} unavailable. Falling back to ${fallbackTextModel}...`);
       try {
         const fallbackResult = await makeRequest(fallbackTextModel);
         return fallbackResult.choices[0]?.message?.content || '';
@@ -234,50 +231,32 @@ export async function analyzeImage(
   const groq = getGroqClient();
   const prompt = getImageAnalysisPrompt();
   const langName = getLanguageName(languageCode);
-  const { visionModel, fallbackVisionModel, temperature, maxTokens } = APP_CONFIG.ai;
+  const { visionModel, temperature, maxTokens } = APP_CONFIG.ai;
 
-  const makeRequest = (modelId: string) =>
-    groq.chat.completions.create({
-      model: modelId,
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert AI image analyzer. Always respond in valid JSON format. All user-facing text in the JSON (such as summary/explanations) MUST be written in ${langName}.`,
-        },
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:${mimeType};base64,${imageBase64}`,
-              },
+  const result = await groq.chat.completions.create({
+    model: visionModel,
+    messages: [
+      {
+        role: 'system',
+        content: `You are an expert AI image analyzer. Always respond in valid JSON format. All user-facing text in the JSON (such as summary/explanations) MUST be written in ${langName}.`,
+      },
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: prompt },
+          {
+            type: 'image_url',
+            image_url: {
+              url: `data:${mimeType};base64,${imageBase64}`,
             },
-          ],
-        },
-      ],
-      temperature,
-      max_tokens: maxTokens,
-      response_format: { type: 'json_object' },
-    });
-
-  let result;
-  try {
-    result = await makeRequest(visionModel);
-  } catch (error: unknown) {
-    if (fallbackVisionModel && fallbackVisionModel !== visionModel && shouldUseFallbackModel(error)) {
-      console.warn(`Vision model ${visionModel} unavailable. Falling back to ${fallbackVisionModel}...`);
-      try {
-        result = await makeRequest(fallbackVisionModel);
-      } catch (fallbackError: unknown) {
-        console.error(`Fallback vision model ${fallbackVisionModel} also failed:`, fallbackError);
-        throw error;
-      }
-    } else {
-      throw error;
-    }
-  }
+          },
+        ],
+      },
+    ],
+    temperature,
+    max_tokens: maxTokens,
+    response_format: { type: 'json_object' },
+  });
 
   const text = result.choices[0]?.message?.content || '';
   const parsed = safeJsonParse(text, isRecord);

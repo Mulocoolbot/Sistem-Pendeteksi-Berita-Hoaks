@@ -13,7 +13,7 @@ import {
 } from '@/lib/services/search';
 import type { ArticleData, InvestigationReport } from '@/lib/types';
 
-export interface AnalyzerPipelineInput {
+interface AnalyzerPipelineInput {
   inputType: 'url' | 'image';
   inputValue: string;
   articleTitle: string;
