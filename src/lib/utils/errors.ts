@@ -47,22 +47,24 @@ export function createSuccessResponse<T>(
   return NextResponse.json<ApiResponse<T>>({ success: true, data }, { status });
 }
 
-export function createErrorResponse(
-  error: unknown,
-  fallbackMessage: string = 'Terjadi kesalahan yang tidak terduga.'
+export function toErrorResponse(
+  err: unknown,
+  fallbackMessage: string = 'Terjadi kesalahan internal pada server.'
 ): NextResponse<ApiResponse<null>> {
-  if (error instanceof AppError) {
+  if (err instanceof AppError) {
     return NextResponse.json<ApiResponse<null>>(
-      { success: false, error: error.message, code: error.code },
-      { status: error.statusCode }
+      { success: false, error: err.message, code: err.code },
+      { status: err.statusCode }
     );
   }
 
-  console.error('Unhandled API error:', error);
-  const message = error instanceof Error ? error.message : fallbackMessage;
+  console.error('Unhandled API error:', err);
+  const message = err instanceof Error && err.message ? err.message : fallbackMessage;
 
   return NextResponse.json<ApiResponse<null>>(
     { success: false, error: message, code: 'INTERNAL_ERROR' },
     { status: 500 }
   );
 }
+
+export const createErrorResponse = toErrorResponse;

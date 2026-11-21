@@ -5,7 +5,9 @@ interface EnvConfig {
   googleSearchEngineId: string;
 }
 
-const ALLOWED_IMAGE_MIMES: readonly string[] = [
+export const HTTP_TIMEOUT_MS = 10_000;
+export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+export const ALLOWED_IMAGE_MIMES: readonly string[] = [
   'image/png',
   'image/jpeg',
   'image/jpg',
@@ -36,7 +38,7 @@ export const APP_CONFIG = {
     yahooSearch: 'https://search.yahoo.com/search',
   },
   timeouts: {
-    externalApiMs: 10000,
+    externalApiMs: HTTP_TIMEOUT_MS,
     directScrapeMs: 5000,
     cacheScrapeMs: 4000,
     simpleScrapeMs: 4000,
@@ -48,7 +50,7 @@ export const APP_CONFIG = {
     maxRedirects: 5,
     minArticleContentLength: 50,
     minExtractedImageTextLength: 10,
-    maxImageSizeBytes: 5 * 1024 * 1024,
+    maxImageSizeBytes: MAX_IMAGE_SIZE_BYTES,
     maxRelatedArticlesToScrape: 5,
     maxSearchQueriesToRun: 2,
     resultsPerSearchQuery: 3,

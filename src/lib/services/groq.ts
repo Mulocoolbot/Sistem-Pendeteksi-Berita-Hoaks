@@ -78,7 +78,19 @@ function getLanguageName(code: string): string {
   return LANGUAGE_NAMES[code] || LANGUAGE_NAMES.id;
 }
 
+function isJsonValidationError(error: unknown): boolean {
+  if (!isRecord(error)) return false;
+  if (typeof error.message === 'string' && error.message.includes('json_validate_failed')) {
+    return true;
+  }
+  if (isRecord(error.error) && isRecord(error.error.error)) {
+    return error.error.error.code === 'json_validate_failed';
+  }
+  return false;
+}
+
 function shouldUseFallbackModel(error: unknown): boolean {
+  if (isJsonValidationError(error)) return true;
   if (!isRecord(error)) return false;
   if (error.status === 429 || error.status === 404) return true;
   if (typeof error.message === 'string') {
@@ -156,7 +168,7 @@ async function chatCompletion(prompt: string, languageCode: string = 'id'): Prom
   const langName = getLanguageName(languageCode);
   const { textModel, fallbackTextModel, temperature, maxTokens } = APP_CONFIG.ai;
 
-  const makeRequest = (modelId: string) =>
+  const makeRequest = (modelId: string, enforceJsonObject: boolean = true) =>
     groq.chat.completions.create({
       model: modelId,
       messages: [
@@ -168,20 +180,34 @@ async function chatCompletion(prompt: string, languageCode: string = 'id'): Prom
       ],
       temperature,
       max_tokens: maxTokens,
-      response_format: { type: 'json_object' },
+      ...(enforceJsonObject ? { response_format: { type: 'json_object' as const } } : {}),
     });
 
+  const requestModel = async (modelId: string): Promise<string> => {
+    try {
+      const result = await makeRequest(modelId, true);
+      return result.choices[0]?.message?.content || '';
+    } catch (error: unknown) {
+      if (isJsonValidationError(error)) {
+        const retryResult = await makeRequest(modelId, false);
+        return retryResult.choices[0]?.message?.content || '';
+      }
+      throw error;
+    }
+  };
+
   try {
-    const result = await makeRequest(textModel);
-    return result.choices[0]?.message?.content || '';
+    return await requestModel(textModel);
   } catch (error: unknown) {
     if (shouldUseFallbackModel(error)) {
       try {
-        const fallbackResult = await makeRequest(fallbackTextModel);
-        return fallbackResult.choices[0]?.message?.content || '';
+        return await requestModel(fallbackTextModel);
       } catch (fallbackError: unknown) {
-        console.error(`Fallback model ${fallbackTextModel} also failed:`, fallbackError);
-        throw error;
+        if (shouldUseFallbackModel(fallbackError)) {
+          console.error(`Fallback model ${fallbackTextModel} also failed:`, fallbackError);
+          return '';
+        }
+        throw fallbackError;
       }
     }
     throw error;

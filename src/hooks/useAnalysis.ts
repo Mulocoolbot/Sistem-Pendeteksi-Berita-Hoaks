@@ -81,23 +81,9 @@ export function useAnalysis(language: LanguageCode) {
     [stopStepSimulation]
   );
 
-  const handleStepChange = useCallback(
-    (step: string) => {
-      if (step === 'complete') {
-        stopStepSimulation();
-        setCurrentStep('complete');
-      }
-    },
-    [stopStepSimulation]
-  );
-
-  const resetAnalysis = useCallback(() => {
-    stopStepSimulation();
-    setIsAnalyzing(false);
-    setCurrentStep('idle');
-    setReport(null);
+  const clearError = useCallback(() => {
     setError(null);
-  }, [stopStepSimulation]);
+  }, []);
 
   const executeAnalysis = useCallback(
     async (
@@ -169,13 +155,9 @@ export function useAnalysis(language: LanguageCode) {
     currentStep,
     report,
     error,
+    clearError,
     resultRef,
     analyzeUrl,
     analyzeImage,
-    handleAnalysisStart,
-    handleAnalysisComplete,
-    handleAnalysisError,
-    handleStepChange,
-    resetAnalysis,
   };
 }

@@ -16,6 +16,8 @@ export default function HomePage() {
     isAnalyzing,
     currentStep,
     report,
+    error,
+    clearError,
     resultRef,
     analyzeUrl,
     analyzeImage,
@@ -39,6 +41,8 @@ export default function HomePage() {
           onAnalyzeUrl={analyzeUrl}
           onAnalyzeImage={analyzeImage}
           isAnalyzing={isAnalyzing}
+          externalError={error}
+          onClearError={clearError}
         />
 
         <div aria-live="polite" aria-busy={isAnalyzing}>

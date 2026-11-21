@@ -13,7 +13,7 @@ import {
 } from '@/lib/services/search';
 import type { ArticleData, InvestigationReport } from '@/lib/types';
 
-interface AnalyzerPipelineInput {
+export interface InvestigationInput {
   inputType: 'url' | 'image';
   inputValue: string;
   articleTitle: string;
@@ -34,8 +34,8 @@ function formatRelatedArticles(articles: ArticleData[]): string {
     .join('\n\n');
 }
 
-export async function runInvestigationPipeline(
-  input: AnalyzerPipelineInput
+export async function runInvestigation(
+  input: InvestigationInput
 ): Promise<InvestigationReport> {
   const {
     inputType,
@@ -107,3 +107,5 @@ export async function runInvestigationPipeline(
     positiveIndicators: investigation.positiveIndicators,
   };
 }
+
+export const runInvestigationPipeline = runInvestigation;

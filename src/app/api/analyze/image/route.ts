@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server';
-import { APP_CONFIG } from '@/lib/config';
-import { runInvestigationPipeline } from '@/lib/services/analyzer';
+import { ALLOWED_IMAGE_MIMES, APP_CONFIG, MAX_IMAGE_SIZE_BYTES } from '@/lib/config';
+import { runInvestigation } from '@/lib/services/analyzer';
 import { analyzeImage } from '@/lib/services/groq';
 import type { AnalyzeImageRequest } from '@/lib/types';
-import { AppError, createErrorResponse, createSuccessResponse, parseJsonBody } from '@/lib/utils/errors';
+import { AppError, createSuccessResponse, parseJsonBody, toErrorResponse } from '@/lib/utils/errors';
 import { isRecord } from '@/lib/utils/sanitize';
 
 export const maxDuration = 60;
@@ -28,14 +28,14 @@ function parseAnalyzeImageRequest(body: unknown): AnalyzeImageRequest {
     throw AppError.badRequest('Gambar tidak valid. Silakan upload ulang.', 'INVALID_IMAGE');
   }
 
-  if (!APP_CONFIG.limits.allowedImageMimes.includes(body.mimeType)) {
+  if (!ALLOWED_IMAGE_MIMES.includes(body.mimeType)) {
     throw AppError.badRequest(
       `Format gambar tidak didukung: ${body.mimeType}. Gunakan PNG, JPEG, atau WebP.`,
       'UNSUPPORTED_IMAGE_FORMAT'
     );
   }
 
-  if (estimateBase64Bytes(body.imageBase64) > APP_CONFIG.limits.maxImageSizeBytes) {
+  if (estimateBase64Bytes(body.imageBase64) > MAX_IMAGE_SIZE_BYTES) {
     throw AppError.payloadTooLarge(
       'Ukuran gambar melebihi batas maksimal 5MB.',
       'IMAGE_TOO_LARGE'
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       imageResult.detectedSource ? ` from ${imageResult.detectedSource}` : ''
     }`;
 
-    const report = await runInvestigationPipeline({
+    const report = await runInvestigation({
       inputType: 'image',
       inputValue,
       articleTitle,
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     });
 
     return createSuccessResponse(report);
-  } catch (error: unknown) {
-    return createErrorResponse(error);
+  } catch (err: unknown) {
+    return toErrorResponse(err);
   }
 }

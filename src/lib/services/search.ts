@@ -1,6 +1,6 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { APP_CONFIG, getEnvConfig } from '@/lib/config';
+import { APP_CONFIG, getEnvConfig, HTTP_TIMEOUT_MS } from '@/lib/config';
 import type {
   ArticleData,
   EvidenceSource,
@@ -38,7 +38,7 @@ async function searchYahoo(
         Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
       },
-      timeout: APP_CONFIG.timeouts.externalApiMs,
+      timeout: HTTP_TIMEOUT_MS,
     });
 
     const $ = cheerio.load(response.data);
@@ -98,7 +98,7 @@ async function searchRelatedNews(
           q: query,
           num: Math.min(numResults, APP_CONFIG.limits.maxGoogleSearchResults),
         },
-        timeout: APP_CONFIG.timeouts.externalApiMs,
+        timeout: HTTP_TIMEOUT_MS,
       }
     );
 
