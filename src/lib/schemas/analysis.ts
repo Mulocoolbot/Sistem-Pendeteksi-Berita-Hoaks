@@ -94,3 +94,20 @@ export const ProviderStatusSchema = z.object({
   factcheck: z.enum(['tavily_factcheck', 'jina_factcheck', 'failed', 'skipped']),
   warnings: z.array(z.string()),
 });
+
+export const AuditCritiqueSchema = z.object({
+  approved: z.boolean(),
+  adjustedVerdict: VerdictSchema,
+  adjustedConfidence: z.number().min(0).max(100),
+  ungroundedClaims: z.array(z.string()),
+  auditNote: z.string().min(1),
+});
+
+export const RerankerMethodSchema = z.enum(['jina', 'local']);
+
+export const AiAuditMetadataSchema = z.object({
+  modelUsed: z.string().min(1),
+  rerankerUsed: RerankerMethodSchema,
+  selfCritiqueAdjusted: z.boolean(),
+  auditNote: z.string().min(1),
+});

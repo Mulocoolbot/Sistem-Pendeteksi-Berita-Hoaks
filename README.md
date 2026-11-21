@@ -8,9 +8,13 @@ Aplikasi web berbasis Next.js (App Router) dengan TypeScript untuk menganalisis 
 - **UI Library**: React `19.2.4` dan React DOM `19.2.4`
 - **Bahasa**: TypeScript (`^5`)
 - **Styling**: CSS Modules dan CSS global
-- **AI / LLM**: `groq-sdk` (`^1.3.0`)
-  - Analisis teks (`textModel` / `fallbackTextModel` di `src/lib/config.ts`): `openai/gpt-oss-120b` dengan fallback `openai/gpt-oss-20b`
-  - Analisis gambar (`visionModel` di `src/lib/config.ts`): `qwen/qwen3.8-27b`
+- **AI / LLM**: `groq-sdk` (`^1.3.0`) dengan Task-Based AI Router (`src/lib/services/ai-router.ts`)
+  - Ekstraksi klaim & sinyal (`task: 'extract'`): `GROQ_MODEL_FAST` (default: `llama-3.3-70b-versatile`)
+  - Sintesis & Self-Critique (`task: 'reason'` & `task: 'audit'`): `GROQ_MODEL_REASONING` (default: `openai/gpt-oss-120b`) dengan fallback otomatis ke `GROQ_MODEL_FAST` pada HTTP `404`/`429`/`503`
+  - Analisis gambar (`task: 'vision'`): `GROQ_MODEL_VISION` (default: `meta-llama/llama-4-scout-17b-16e-instruct`)
+  - Mendukung custom/fine-tuned endpoint OpenAI-compatible opsional melalui `AI_CUSTOM_BASE_URL`, `AI_CUSTOM_API_KEY`, dan `AI_CUSTOM_MODEL`
+- **Semantic Evidence Reranking**: `src/lib/services/reranker.ts` menggunakan Jina Reranker v2 (`https://api.jina.ai/v1/rerank`, `jina-reranker-v2-base-multilingual`) dengan fallback lokal BM25 + token-overlap otomatis tanpa error
+- **2-Pass Adversarial Self-Critique**: Pass 1 Synthesizer menghasilkan draf `FinalSynthesisOutput`, lalu Pass 2 Auditor (`AuditCritiqueSchema`) memvalidasi keterikatan bukti dan mencatat metadata `aiAudit` (`modelUsed`, `rerankerUsed`, `selfCritiqueAdjusted`, `auditNote`) pada `InvestigationReport`
 - **HTTP Client & HTML Parser**: `axios` (`^1.18.1`) dan `cheerio` (`^1.2.0`)
 - **Ekstraksi & Pencarian Eksternal**: Tavily Search API (`https://api.tavily.com/search`), Jina Reader API (`https://r.jina.ai/`), dan Jina Search API (`https://s.jina.ai/`)
 - **Linter**: ESLint (`^9`) dengan `eslint-config-next` (`16.2.10`)
@@ -47,14 +51,17 @@ Aplikasi web berbasis Next.js (App Router) dengan TypeScript untuk menganalisis 
 
    Aplikasi berjalan di `http://localhost:3000`.
 
-4. Perintah pemeriksaan tipe, lint, build produksi, dan menjalankan hasil build:
+4. Perintah pemeriksaan tipe, lint, build produksi, evaluasi golden benchmark, dan menjalankan hasil build:
 
    ```bash
    npx tsc --noEmit
    npm run lint
    npm run build
+   npm run eval
    npm run start
    ```
+
+   > Catatan: `npm run eval` menjalankan `scripts/eval-benchmark.ts` (8 kasus uji: 2 `VERIFIED`, 2 `HOAX`, 2 `MISLEADING`, 2 `UNVERIFIED`) terhadap `http://localhost:3000/api/analyze/url` (dapat dioverride melalui `EVAL_API_URL`) saat server lokal aktif (`npm run dev` atau `npm run start`).
 
 ## Daftar Variabel `.env.example`
 
@@ -62,9 +69,15 @@ Seluruh variabel lingkungan berikut dibaca oleh `getEnvConfig()` di `src/lib/con
 
 | Variabel | Status | Digunakan Oleh | Keterangan |
 | --- | --- | --- | --- |
-| `GROQ_API_KEY` | Wajib | `src/lib/services/groq.ts` | API key Groq untuk ekstraksi klaim, penyusunan query pencarian, sintesis verifikasi, dan ekstraksi teks dari gambar. |
+| `GROQ_API_KEY` | Wajib | `src/lib/services/ai-router.ts` | API key Groq untuk ekstraksi klaim, penyusunan query pencarian, sintesis verifikasi, audit self-critique, dan ekstraksi teks dari gambar. |
+| `GROQ_MODEL_FAST` | Opsional | `src/lib/services/ai-router.ts` | Model cepat Groq untuk ekstraksi klaim dan fallback reasoning/audit (default: `llama-3.3-70b-versatile`). |
+| `GROQ_MODEL_REASONING` | Opsional | `src/lib/services/ai-router.ts` | Model reasoning utama untuk Pass 1 sintesis dan Pass 2 audit self-critique (default: `openai/gpt-oss-120b`). |
+| `GROQ_MODEL_VISION` | Opsional | `src/lib/services/ai-router.ts` | Model vision untuk analisis gambar/OCR (default: `meta-llama/llama-4-scout-17b-16e-instruct`). |
+| `AI_CUSTOM_BASE_URL` | Opsional | `src/lib/services/ai-router.ts` | Base URL endpoint OpenAI-compatible untuk menyambungkan custom/fine-tuned LLM pada tugas `reason` dan `audit`. |
+| `AI_CUSTOM_API_KEY` | Opsional | `src/lib/services/ai-router.ts` | API key Bearer untuk endpoint `AI_CUSTOM_BASE_URL`. |
+| `AI_CUSTOM_MODEL` | Opsional | `src/lib/services/ai-router.ts` | Nama model pada endpoint `AI_CUSTOM_BASE_URL`. |
 | `TAVILY_API_KEY` | Opsional (Primary Search & Fact-Check) | `src/lib/services/search.ts`, `src/lib/services/factcheck.ts` | API key Tavily Search (`POST https://api.tavily.com/search`) untuk pencarian berita utama serta pencarian klaim ke domain pemeriksa fakta terverifikasi (`turnbackhoax.id`, `cekfakta.com`, `cekfakta.tempo.co`, `snopes.com`, `politifact.com`, `factcheck.org`, `fullfact.org`). Jika kosong atau gagal (HTTP 4xx/5xx/timeout), sistem otomatis fallback ke Jina Search (`https://s.jina.ai/`). |
-| `JINA_API_KEY` | Opsional (Reader & Search Fallback) | `src/lib/services/scraper.ts`, `src/lib/services/search.ts`, `src/lib/services/factcheck.ts` | API key Jina AI untuk meningkatkan rate limit Jina Reader (`https://r.jina.ai/`) ketika Cheerio mendapat HTTP 403/429/5xx, timeout, atau konten < 200 karakter, serta fallback Jina Search (`https://s.jina.ai/`). |
+| `JINA_API_KEY` | Opsional (Reader, Search Fallback & Semantic Reranker) | `src/lib/services/scraper.ts`, `src/lib/services/search.ts`, `src/lib/services/factcheck.ts`, `src/lib/services/reranker.ts` | API key Jina AI untuk meningkatkan rate limit Jina Reader (`https://r.jina.ai/`), fallback Jina Search (`https://s.jina.ai/`), serta mengaktifkan Jina Reranker v2 (`https://api.jina.ai/v1/rerank`); jika kosong atau gagal, reranker otomatis fallback ke reranker lokal BM25 + token-overlap. |
 
 ## Struktur Folder
 
@@ -78,6 +91,8 @@ Seluruh variabel lingkungan berikut dibaca oleh `getEnvConfig()` di `src/lib/con
 ├── package-lock.json                       # Lockfile npm
 ├── tsconfig.json                           # Konfigurasi TypeScript dan alias @/*
 ├── public/                                 # Direktori aset statis publik
+├── scripts/
+│   └── eval-benchmark.ts                   # Skrip evaluasi golden benchmark (npm run eval)
 └── src/
     ├── app/
     │   ├── api/
@@ -109,9 +124,11 @@ Seluruh variabel lingkungan berikut dibaca oleh `getEnvConfig()` di `src/lib/con
         ├── schemas/
         │   └── analysis.ts                 # Skema validasi Zod untuk input/output analisis & provider
         ├── services/
-        │   ├── analyzer.ts                 # Orkestrasi pipeline investigasi & graceful degradation
+        │   ├── ai-router.ts                # Router model berbasis tugas + fallback 404/429/503
+        │   ├── analyzer.ts                 # Orkestrasi pipeline investigasi, reranking & 2-pass audit
         │   ├── factcheck.ts                # Klien paralel verifikasi domain fact-checker (Tavily -> Jina Search)
-        │   ├── groq.ts                     # Klien Groq API (teks dan vision)
+        │   ├── groq.ts                     # Wrapper panggilan AI terstruktur melalui ai-router
+        │   ├── reranker.ts                 # Semantic evidence reranker (Jina v2 -> BM25 lokal)
         │   ├── scraper.ts                  # Ekstraksi artikel (Cheerio fast-path -> Jina Reader fallback)
         │   └── search.ts                   # Pencarian berita (Tavily primary -> Jina Search fallback)
         └── utils/
