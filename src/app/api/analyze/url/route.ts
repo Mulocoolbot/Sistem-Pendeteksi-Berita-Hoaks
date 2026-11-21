@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server';
 import { APP_CONFIG } from '@/lib/config';
-import { runInvestigationPipeline } from '@/lib/services/analyzer';
+import { runInvestigation } from '@/lib/services/analyzer';
 import { scrapeArticle } from '@/lib/services/scraper';
 import type { AnalyzeUrlRequest } from '@/lib/types';
-import { AppError, createErrorResponse, createSuccessResponse, parseJsonBody } from '@/lib/utils/errors';
+import { AppError, createSuccessResponse, parseJsonBody, toErrorResponse } from '@/lib/utils/errors';
 import { isRecord, isValidUrl } from '@/lib/utils/sanitize';
 
 export const maxDuration = 60;
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const report = await runInvestigationPipeline({
+    const report = await runInvestigation({
       inputType: 'url',
       inputValue: url,
       articleTitle: article.title,
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     });
 
     return createSuccessResponse(report);
-  } catch (error: unknown) {
-    return createErrorResponse(error);
+  } catch (err: unknown) {
+    return toErrorResponse(err);
   }
 }

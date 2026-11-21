@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { APP_CONFIG, getEnvConfig } from '@/lib/config';
+import { APP_CONFIG, getEnvConfig, HTTP_TIMEOUT_MS } from '@/lib/config';
 import type { FactCheckResult, FactCheckReview } from '@/lib/types';
 
 interface FactCheckApiResponse {
@@ -35,7 +35,7 @@ async function checkClaim(claim: string): Promise<FactCheckResult[]> {
           key: googleFactCheckApiKey,
           languageCode: '',
         },
-        timeout: APP_CONFIG.timeouts.externalApiMs,
+        timeout: HTTP_TIMEOUT_MS,
       }
     );
 

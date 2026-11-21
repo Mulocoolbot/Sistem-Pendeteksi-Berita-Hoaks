@@ -9,6 +9,8 @@ interface InputPanelProps {
   onAnalyzeUrl: (url: string) => Promise<void>;
   onAnalyzeImage: (file: File) => Promise<void>;
   isAnalyzing: boolean;
+  externalError?: string | null;
+  onClearError?: () => void;
 }
 
 export default function InputPanel({
@@ -16,6 +18,8 @@ export default function InputPanel({
   onAnalyzeUrl,
   onAnalyzeImage,
   isAnalyzing,
+  externalError = null,
+  onClearError,
 }: InputPanelProps) {
   const t = TRANSLATIONS[language];
   const [activeTab, setActiveTab] = useState<'url' | 'image'>('url');
@@ -37,6 +41,7 @@ export default function InputPanel({
     }
 
     setError(null);
+    onClearError?.();
     try {
       await onAnalyzeUrl(url.trim());
     } catch (err) {
@@ -48,7 +53,7 @@ export default function InputPanel({
             : 'An error occurred.';
       setError(message);
     }
-  }, [url, language, onAnalyzeUrl]);
+  }, [url, language, onAnalyzeUrl, onClearError]);
 
   const handleImageSubmit = useCallback(async () => {
     if (!imageFile) {
@@ -61,6 +66,7 @@ export default function InputPanel({
     }
 
     setError(null);
+    onClearError?.();
     try {
       await onAnalyzeImage(imageFile);
     } catch (err) {
@@ -72,7 +78,7 @@ export default function InputPanel({
             : 'An error occurred.';
       setError(message);
     }
-  }, [imageFile, language, onAnalyzeImage]);
+  }, [imageFile, language, onAnalyzeImage, onClearError]);
 
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -90,6 +96,7 @@ export default function InputPanel({
       return;
     }
     setError(null);
+    onClearError?.();
     setImageFile(file);
 
     const reader = new FileReader();
@@ -138,6 +145,7 @@ export default function InputPanel({
           onClick={() => {
             setActiveTab('url');
             setError(null);
+            onClearError?.();
           }}
           disabled={isAnalyzing}
         >
@@ -151,6 +159,7 @@ export default function InputPanel({
           onClick={() => {
             setActiveTab('image');
             setError(null);
+            onClearError?.();
           }}
           disabled={isAnalyzing}
         >
@@ -271,11 +280,14 @@ export default function InputPanel({
         </div>
       </form>
 
-      {error && (
-        <div className={styles.error} role="alert" aria-live="assertive">
-          {error}
-        </div>
-      )}
+      {(() => {
+        const displayedError = error || externalError;
+        return displayedError ? (
+          <div className={styles.error} role="alert" aria-live="assertive">
+            {displayedError}
+          </div>
+        ) : null;
+      })()}
     </section>
   );
 }
