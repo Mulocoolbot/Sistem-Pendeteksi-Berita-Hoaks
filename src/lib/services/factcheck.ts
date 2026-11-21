@@ -20,10 +20,9 @@ interface FactCheckApiResponse {
   }>;
 }
 
-export async function checkClaim(claim: string): Promise<FactCheckResult[]> {
+async function checkClaim(claim: string): Promise<FactCheckResult[]> {
   const { googleFactCheckApiKey } = getEnvConfig();
   if (!googleFactCheckApiKey) {
-    console.warn('GOOGLE_FACT_CHECK_API_KEY not configured. Skipping fact-check lookup.');
     return [];
   }
 

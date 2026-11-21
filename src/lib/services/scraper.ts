@@ -35,10 +35,6 @@ function getBrowserHeaders(url: string): Record<string, string> {
   };
 }
 
-function formatErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 function isUnreachableHostError(error: unknown): boolean {
   if (!isRecord(error)) return false;
   const code = typeof error.code === 'string' ? error.code : '';
@@ -69,7 +65,6 @@ async function fetchHtml(url: string): Promise<string> {
       return response.data;
     }
   } catch (error: unknown) {
-    console.warn(`Direct fetch failed for ${url}:`, formatErrorMessage(error));
     if (isUnreachableHostError(error)) {
       throw AppError.unprocessable(
         `Domain ${getDomain(url)} tidak ditemukan atau tidak dapat dijangkau.`,
@@ -91,8 +86,8 @@ async function fetchHtml(url: string): Promise<string> {
     if (response.status === 200 && typeof response.data === 'string' && response.data.length > 0) {
       return response.data;
     }
-  } catch (error: unknown) {
-    console.warn(`Google cache fallback failed for ${url}:`, formatErrorMessage(error));
+  } catch {
+    // Fall through to simple fetch when Google Cache is unavailable.
   }
 
   try {
@@ -107,8 +102,8 @@ async function fetchHtml(url: string): Promise<string> {
     if (typeof simpleResponse.data === 'string' && simpleResponse.data.length > 0) {
       return simpleResponse.data;
     }
-  } catch (error: unknown) {
-    console.warn(`Simple fetch fallback failed for ${url}:`, formatErrorMessage(error));
+  } catch {
+    // Throw unified SCRAPE_FAILED error below after exhausting all strategies.
   }
 
   throw AppError.unprocessable(
@@ -148,7 +143,7 @@ export async function scrapeArticle(url: string): Promise<ArticleData> {
       'meta[name="twitter:image"]',
     ]);
     const language =
-      extractMeta($, ['meta[property="og:locale"]', 'html[lang]']) ||
+      extractMeta($, ['meta[property="og:locale"]']) ||
       $('html').attr('lang') ||
       null;
 
@@ -193,8 +188,8 @@ export async function scrapeMultipleArticles(
       if (article.content.length > APP_CONFIG.limits.minArticleContentLength) {
         results.push(article);
       }
-    } catch (error: unknown) {
-      console.warn(`Skipping failed scrape for ${url}:`, formatErrorMessage(error));
+    } catch {
+      // Skip individual failing sources so remaining articles still provide evidence.
     }
   }
 

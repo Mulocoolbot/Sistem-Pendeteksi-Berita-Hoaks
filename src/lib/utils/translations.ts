@@ -1,12 +1,11 @@
 export type LanguageCode = 'en' | 'id' | 'zh' | 'ja' | 'es' | 'hi' | 'fr' | 'pt';
 
-export interface Language {
+interface Language {
   code: LanguageCode;
   name: string;
-  flag: string;
 }
 
-export interface TranslationDictionary {
+interface TranslationDictionary {
   badge: string;
   titleMain: string;
   titleSub: string;
@@ -66,19 +65,18 @@ export interface TranslationDictionary {
 }
 
 export const LANGUAGES: Language[] = [
-  { code: 'id', name: 'Bahasa Indonesia', flag: '🇮🇩' },
-  { code: 'en', name: 'English', flag: '🇬🇧' },
-  { code: 'zh', name: '中文', flag: '🇨🇳' },
-  { code: 'ja', name: '日本語', flag: '🇯🇵' },
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
-  { code: 'hi', name: 'हिन्दी', flag: '🇮🇳' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'pt', name: 'Português', flag: '🇵🇹' },
+  { code: 'id', name: 'Bahasa Indonesia' },
+  { code: 'en', name: 'English' },
+  { code: 'zh', name: '中文' },
+  { code: 'ja', name: '日本語' },
+  { code: 'es', name: 'Español' },
+  { code: 'hi', name: 'हिन्दी' },
+  { code: 'fr', name: 'Français' },
+  { code: 'pt', name: 'Português' },
 ];
 
 export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
     id: {
-      // Hero
       badge: 'AI-Powered Fact Checker',
       titleMain: 'Deteksi Berita Hoaks',
       titleSub: 'dalam Hitungan Detik',
@@ -88,7 +86,6 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       featureLang: 'Multi-Bahasa',
       featureEngine: 'Groq AI',
 
-      // InputPanel
       tabUrl: 'URL Berita',
       tabImg: 'Gambar Berita',
       urlPlaceholder: 'Masukkan URL berita... (contoh: https://example.com/berita)',
@@ -97,7 +94,6 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       btnInvestigate: 'Investigasi Sekarang',
       btnInvestigating: 'Menganalisis...',
 
-      // Timeline
       timelineTitle: 'Investigasi Sedang Berlangsung...',
       step_extracting: 'Mengekstrak Konten',
       step_extracting_desc: 'Membaca dan mengekstrak elemen dari input...',
@@ -114,7 +110,6 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       complete: 'Selesai',
       error: 'Terjadi Kesalahan',
 
-      // ResultCard
       credibilityScore: 'Skor Kredibilitas',
       confidence: 'Keyakinan',
       claimsAnalyzed: 'Klaim dianalisis',
@@ -133,7 +128,6 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       confidence_medium: 'SEDANG',
       confidence_high: 'TINGGI',
 
-      // EvidenceList
       officialFactCheck: 'Hasil Fact-Check Resmi',
       foundSources: 'Sumber Berita yang Ditemukan',
       stance_supports: 'Mendukung',
@@ -142,7 +136,6 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
       similarity: 'Kemiripan',
       noSources: 'Tidak ada sumber berita terkait yang ditemukan dari pencarian internet.',
 
-      // Footer
       disclaimer: 'Sistem ini menggunakan AI dan tidak 100% akurat. Selalu verifikasi informasi dari sumber terpercaya.',
       poweredBy: 'Powered by Groq AI (Llama) • Google Fact Check API • Google Custom Search',
     },
