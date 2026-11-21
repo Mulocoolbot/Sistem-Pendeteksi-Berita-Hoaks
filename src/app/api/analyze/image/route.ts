@@ -1,10 +1,15 @@
 import { NextRequest } from 'next/server';
 import { ALLOWED_IMAGE_MIMES, APP_CONFIG, MAX_IMAGE_SIZE_BYTES } from '@/lib/config';
+import { ImageAnalyzeInputSchema } from '@/lib/schemas/analysis';
 import { runInvestigation } from '@/lib/services/analyzer';
 import { analyzeImage } from '@/lib/services/groq';
-import type { AnalyzeImageRequest } from '@/lib/types';
-import { AppError, createSuccessResponse, parseJsonBody, toErrorResponse } from '@/lib/utils/errors';
-import { isRecord } from '@/lib/utils/sanitize';
+import { analysisCache, buildImageCacheKey } from '@/lib/utils/cache';
+import {
+  AppError,
+  createSuccessResponse,
+  parseJsonBody,
+  toErrorResponse,
+} from '@/lib/utils/errors';
 
 export const maxDuration = 60;
 
@@ -17,44 +22,45 @@ function estimateBase64Bytes(base64Input: string): number {
   return Math.floor((normalized.length * 3) / 4) - padding;
 }
 
-function parseAnalyzeImageRequest(body: unknown): AnalyzeImageRequest {
-  if (
-    !isRecord(body) ||
-    typeof body.imageBase64 !== 'string' ||
-    typeof body.mimeType !== 'string' ||
-    !body.imageBase64 ||
-    !body.mimeType
-  ) {
-    throw AppError.badRequest('Gambar tidak valid. Silakan upload ulang.', 'INVALID_IMAGE');
-  }
-
-  if (!ALLOWED_IMAGE_MIMES.includes(body.mimeType)) {
-    throw AppError.badRequest(
-      `Format gambar tidak didukung: ${body.mimeType}. Gunakan PNG, JPEG, atau WebP.`,
-      'UNSUPPORTED_IMAGE_FORMAT'
-    );
-  }
-
-  if (estimateBase64Bytes(body.imageBase64) > MAX_IMAGE_SIZE_BYTES) {
-    throw AppError.payloadTooLarge(
-      'Ukuran gambar melebihi batas maksimal 5MB.',
-      'IMAGE_TOO_LARGE'
-    );
-  }
-
-  return {
-    imageBase64: body.imageBase64,
-    mimeType: body.mimeType,
-    language: typeof body.language === 'string' ? body.language : 'id',
-  };
-}
-
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
     const rawBody = await parseJsonBody(request);
-    const { imageBase64, mimeType, language = 'id' } = parseAnalyzeImageRequest(rawBody);
+    const parsed = ImageAnalyzeInputSchema.safeParse(rawBody);
+
+    if (!parsed.success) {
+      throw AppError.badRequest(
+        'Gambar tidak valid. Silakan upload ulang.',
+        'INVALID_IMAGE'
+      );
+    }
+
+    const { imageBase64, mimeType, language } = parsed.data;
+
+    if (!ALLOWED_IMAGE_MIMES.includes(mimeType)) {
+      throw AppError.badRequest(
+        `Format gambar tidak didukung: ${mimeType}. Gunakan PNG, JPEG, atau WebP.`,
+        'UNSUPPORTED_IMAGE_FORMAT'
+      );
+    }
+
+    if (estimateBase64Bytes(imageBase64) > MAX_IMAGE_SIZE_BYTES) {
+      throw AppError.payloadTooLarge(
+        'Ukuran gambar melebihi batas maksimal 5MB.',
+        'IMAGE_TOO_LARGE'
+      );
+    }
+
+    const cacheKey = buildImageCacheKey(imageBase64);
+    const cachedReport = analysisCache.get(cacheKey);
+    if (cachedReport) {
+      return createSuccessResponse({
+        ...cachedReport,
+        cached: true,
+        analysisTimeMs: Date.now() - startTime,
+      });
+    }
 
     const imageResult = await analyzeImage(imageBase64, mimeType, language);
     if (
@@ -80,6 +86,8 @@ export async function POST(request: NextRequest) {
       articleTitle,
       articleContent: imageResult.extractedText,
       language,
+      publishedDate: imageResult.detectedDate,
+      cacheKey,
       startTimeMs: startTime,
     });
 

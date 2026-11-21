@@ -180,16 +180,15 @@ export async function scrapeMultipleArticles(
   maxArticles: number = APP_CONFIG.limits.maxRelatedArticlesToScrape
 ): Promise<ArticleData[]> {
   const limited = urls.slice(0, maxArticles);
+  const settled = await Promise.allSettled(limited.map((url) => scrapeArticle(url)));
   const results: ArticleData[] = [];
 
-  for (const url of limited) {
-    try {
-      const article = await scrapeArticle(url);
-      if (article.content.length > APP_CONFIG.limits.minArticleContentLength) {
-        results.push(article);
-      }
-    } catch {
-      // Skip individual failing sources so remaining articles still provide evidence.
+  for (const outcome of settled) {
+    if (
+      outcome.status === 'fulfilled' &&
+      outcome.value.content.length > APP_CONFIG.limits.minArticleContentLength
+    ) {
+      results.push(outcome.value);
     }
   }
 

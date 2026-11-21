@@ -57,7 +57,7 @@ export const APP_CONFIG = {
     defaultSearchResults: 5,
     maxGoogleSearchResults: 10,
     reportContentPreviewLength: 2000,
-    relatedArticleExcerptLength: 500,
+    relatedArticleExcerptLength: 1200,
     evidenceSnippetLength: 160,
     fallbackTitleMaxLength: 100,
     bodyFallbackMaxLength: 5000,
