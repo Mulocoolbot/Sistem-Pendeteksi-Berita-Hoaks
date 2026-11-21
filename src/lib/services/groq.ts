@@ -1,27 +1,57 @@
-// ============================================================
-// Groq AI Service — Content Analysis & Fact-Checking
-// Menggunakan Groq (GRATIS, tanpa kartu kredit)
-// ============================================================
-
 import Groq from 'groq-sdk';
-import type { ClaimData, ImageAnalysisResult } from '@/lib/types';
+import type {
+  ClaimAssessment,
+  ClaimData,
+  ClaimImportance,
+  ConfidenceLevel,
+  ImageAnalysisResult,
+  ImageContentType,
+  InvestigationAIResult,
+  SourceEvaluation,
+  SourceStance,
+  Verdict,
+} from '@/lib/types';
 import {
   getClaimExtractionPrompt,
   getImageAnalysisPrompt,
   getInvestigationPrompt,
   getSearchQueryPrompt,
 } from '@/lib/utils/prompts';
-import { safeJsonParse } from '@/lib/utils/sanitize';
+import { isRecord, safeJsonParse } from '@/lib/utils/sanitize';
 
-interface GroqError {
-  status?: number;
-  message?: string;
-}
+const TEXT_MODEL = 'openai/gpt-oss-120b';
+const FALLBACK_TEXT_MODEL = 'openai/gpt-oss-20b';
+const VISION_MODEL = 'qwen/qwen3.8-27b';
+const FALLBACK_VISION_MODEL: string | null = null;
 
-// Model untuk teks biasa (cepat & gratis)
-const TEXT_MODEL = 'llama-3.3-70b-versatile';
-// Model untuk vision/image (mendukung gambar)
-const VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: 'English',
+  zh: 'Chinese (Mandarin)',
+  ja: 'Japanese',
+  es: 'Spanish',
+  hi: 'Hindi',
+  fr: 'French',
+  pt: 'Portuguese',
+  id: 'Indonesian (Bahasa Indonesia)',
+};
+
+const VALID_VERDICTS: ReadonlySet<Verdict> = new Set([
+  'HOAKS',
+  'FAKTA',
+  'MISLEADING',
+  'BELUM TERVERIFIKASI',
+]);
+
+const VALID_CONFIDENCE: ReadonlySet<ConfidenceLevel> = new Set(['high', 'medium', 'low']);
+const VALID_IMPORTANCE: ReadonlySet<ClaimImportance> = new Set(['high', 'medium', 'low']);
+const VALID_STANCE: ReadonlySet<SourceStance> = new Set(['supports', 'contradicts', 'neutral']);
+const VALID_CONTENT_TYPES: ReadonlySet<ImageContentType> = new Set([
+  'news-screenshot',
+  'social-media',
+  'poster',
+  'meme',
+  'other',
+]);
 
 function getGroqClient(): Groq {
   const apiKey = process.env.GROQ_API_KEY;
@@ -34,27 +64,103 @@ function getGroqClient(): Groq {
 }
 
 function getLanguageName(code: string): string {
-  switch (code) {
-    case 'en': return 'English';
-    case 'zh': return 'Chinese (Mandarin)';
-    case 'ja': return 'Japanese';
-    case 'es': return 'Spanish';
-    case 'hi': return 'Hindi';
-    case 'fr': return 'French';
-    case 'pt': return 'Portuguese';
-    default: return 'Indonesian (Bahasa Indonesia)';
-  }
+  return LANGUAGE_NAMES[code] || LANGUAGE_NAMES.id;
 }
 
-/**
- * Sends a text-only chat completion to Groq.
- */
+function shouldUseFallbackModel(error: unknown): boolean {
+  if (!isRecord(error)) return false;
+  if (error.status === 429 || error.status === 404) return true;
+  if (typeof error.message === 'string') {
+    return (
+      error.message.includes('429') ||
+      error.message.includes('rate_limit_exceeded') ||
+      error.message.includes('404') ||
+      error.message.includes('model_not_found') ||
+      error.message.includes('model_decommissioned')
+    );
+  }
+  return false;
+}
+
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string');
+}
+
+function toVerdict(value: unknown): Verdict {
+  if (typeof value === 'string' && VALID_VERDICTS.has(value as Verdict)) {
+    return value as Verdict;
+  }
+  return 'BELUM TERVERIFIKASI';
+}
+
+function toConfidenceLevel(value: unknown): ConfidenceLevel {
+  if (typeof value === 'string' && VALID_CONFIDENCE.has(value as ConfidenceLevel)) {
+    return value as ConfidenceLevel;
+  }
+  return 'low';
+}
+
+function toClaimImportance(value: unknown): ClaimImportance {
+  if (typeof value === 'string' && VALID_IMPORTANCE.has(value as ClaimImportance)) {
+    return value as ClaimImportance;
+  }
+  return 'medium';
+}
+
+function toSourceStance(value: unknown): SourceStance {
+  if (typeof value === 'string' && VALID_STANCE.has(value as SourceStance)) {
+    return value as SourceStance;
+  }
+  return 'neutral';
+}
+
+function toImageContentType(value: unknown): ImageContentType {
+  if (typeof value === 'string' && VALID_CONTENT_TYPES.has(value as ImageContentType)) {
+    return value as ImageContentType;
+  }
+  return 'other';
+}
+
+function normalizeClaimAssessments(value: unknown): ClaimAssessment[] {
+  if (!Array.isArray(value)) return [];
+
+  const assessments: ClaimAssessment[] = [];
+  for (const item of value) {
+    if (!isRecord(item) || typeof item.claim !== 'string') continue;
+    assessments.push({
+      claim: item.claim,
+      verdict: toVerdict(item.verdict),
+      confidence: typeof item.confidence === 'number' ? item.confidence : 0,
+      explanation: typeof item.explanation === 'string' ? item.explanation : '',
+      supportingSources: toStringArray(item.supportingSources),
+      contradictingSources: toStringArray(item.contradictingSources),
+    });
+  }
+  return assessments;
+}
+
+function normalizeSourceEvaluations(value: unknown): SourceEvaluation[] {
+  if (!Array.isArray(value)) return [];
+
+  const evaluations: SourceEvaluation[] = [];
+  for (const item of value) {
+    if (!isRecord(item) || typeof item.scrapedIndex !== 'number') continue;
+    evaluations.push({
+      scrapedIndex: item.scrapedIndex,
+      similarityScore: typeof item.similarityScore === 'number' ? item.similarityScore : 0,
+      stance: toSourceStance(item.stance),
+    });
+  }
+  return evaluations;
+}
+
 async function chatCompletion(prompt: string, languageCode: string = 'id'): Promise<string> {
   const groq = getGroqClient();
   const langName = getLanguageName(languageCode);
 
-  const makeRequest = async (modelId: string) => {
-    return await groq.chat.completions.create({
+  const makeRequest = (modelId: string) =>
+    groq.chat.completions.create({
       model: modelId,
       messages: [
         {
@@ -67,24 +173,18 @@ async function chatCompletion(prompt: string, languageCode: string = 'id'): Prom
       max_tokens: 4096,
       response_format: { type: 'json_object' },
     });
-  };
 
   try {
     const result = await makeRequest(TEXT_MODEL);
     return result.choices[0]?.message?.content || '';
-  } catch (error) {
-    const err = error as GroqError;
-    if (
-      err?.status === 429 ||
-      err?.message?.includes('429') ||
-      err?.message?.includes('rate_limit_exceeded')
-    ) {
-      console.warn(`Primary model ${TEXT_MODEL} rate limited. Falling back to llama-3.1-8b-instant...`);
+  } catch (error: unknown) {
+    if (shouldUseFallbackModel(error)) {
+      console.warn(`Primary model ${TEXT_MODEL} unavailable. Falling back to ${FALLBACK_TEXT_MODEL}...`);
       try {
-        const fallbackResult = await makeRequest('llama-3.1-8b-instant');
+        const fallbackResult = await makeRequest(FALLBACK_TEXT_MODEL);
         return fallbackResult.choices[0]?.message?.content || '';
-      } catch (fallbackError) {
-        console.error('Fallback model llama-3.1-8b-instant also failed:', fallbackError);
+      } catch (fallbackError: unknown) {
+        console.error(`Fallback model ${FALLBACK_TEXT_MODEL} also failed:`, fallbackError);
         throw error;
       }
     }
@@ -92,9 +192,6 @@ async function chatCompletion(prompt: string, languageCode: string = 'id'): Prom
   }
 }
 
-/**
- * Extracts key claims from an article.
- */
 export async function extractClaims(
   title: string,
   content: string,
@@ -102,25 +199,34 @@ export async function extractClaims(
 ): Promise<ClaimData[]> {
   const prompt = getClaimExtractionPrompt(title, content);
   const text = await chatCompletion(prompt, languageCode);
+  const parsed = safeJsonParse(text, isRecord);
 
-  const parsed = safeJsonParse<{ claims: ClaimData[] }>(text);
-  if (!parsed || !parsed.claims) {
+  if (!parsed || !Array.isArray(parsed.claims)) {
     console.error('Failed to parse claim extraction response:', text);
     return [
       {
         claim: title,
         context: 'Main headline/title of the article',
-        importance: 'high' as const,
+        importance: 'high',
       },
     ];
   }
 
-  return parsed.claims;
+  const claims: ClaimData[] = [];
+  for (const item of parsed.claims) {
+    if (!isRecord(item) || typeof item.claim !== 'string') continue;
+    claims.push({
+      claim: item.claim,
+      context: typeof item.context === 'string' ? item.context : '',
+      importance: toClaimImportance(item.importance),
+    });
+  }
+
+  return claims.length > 0
+    ? claims
+    : [{ claim: title, context: 'Main headline/title of the article', importance: 'high' }];
 }
 
-/**
- * Analyzes an image using Groq Vision for OCR and element detection.
- */
 export async function analyzeImage(
   imageBase64: string,
   mimeType: string,
@@ -130,8 +236,8 @@ export async function analyzeImage(
   const prompt = getImageAnalysisPrompt();
   const langName = getLanguageName(languageCode);
 
-  const makeRequest = async (modelId: string) => {
-    return await groq.chat.completions.create({
+  const makeRequest = (modelId: string) =>
+    groq.chat.completions.create({
       model: modelId,
       messages: [
         {
@@ -155,23 +261,17 @@ export async function analyzeImage(
       max_tokens: 4096,
       response_format: { type: 'json_object' },
     });
-  };
 
   let result;
   try {
     result = await makeRequest(VISION_MODEL);
-  } catch (error) {
-    const err = error as GroqError;
-    if (
-      err?.status === 429 ||
-      err?.message?.includes('429') ||
-      err?.message?.includes('rate_limit_exceeded')
-    ) {
-      console.warn(`Vision model ${VISION_MODEL} rate limited. Falling back to qwen/qwen3.6-27b...`);
+  } catch (error: unknown) {
+    if (FALLBACK_VISION_MODEL && FALLBACK_VISION_MODEL !== VISION_MODEL && shouldUseFallbackModel(error)) {
+      console.warn(`Vision model ${VISION_MODEL} unavailable. Falling back to ${FALLBACK_VISION_MODEL}...`);
       try {
-        result = await makeRequest('qwen/qwen3.6-27b');
-      } catch (fallbackError) {
-        console.error('Fallback vision model qwen/qwen3.6-27b also failed:', fallbackError);
+        result = await makeRequest(FALLBACK_VISION_MODEL);
+      } catch (fallbackError: unknown) {
+        console.error(`Fallback vision model ${FALLBACK_VISION_MODEL} also failed:`, fallbackError);
         throw error;
       }
     } else {
@@ -180,7 +280,7 @@ export async function analyzeImage(
   }
 
   const text = result.choices[0]?.message?.content || '';
-  const parsed = safeJsonParse<ImageAnalysisResult>(text);
+  const parsed = safeJsonParse(text, isRecord);
 
   if (!parsed) {
     console.error('Failed to parse image analysis response:', text);
@@ -193,32 +293,36 @@ export async function analyzeImage(
     };
   }
 
-  return parsed;
+  return {
+    extractedText: typeof parsed.extractedText === 'string' ? parsed.extractedText : text,
+    contentType: toImageContentType(parsed.contentType),
+    detectedSource: typeof parsed.detectedSource === 'string' ? parsed.detectedSource : null,
+    detectedDate: typeof parsed.detectedDate === 'string' ? parsed.detectedDate : null,
+    summary:
+      typeof parsed.summary === 'string'
+        ? parsed.summary
+        : 'Gambar berhasil dianalisis, namun ringkasan tidak tersedia.',
+  };
 }
 
-/**
- * Generates search queries from claims for finding related articles.
- */
 export async function generateSearchQueries(
   claims: ClaimData[],
   articleTitle: string,
   languageCode: string = 'id'
 ): Promise<string[]> {
-  const claimTexts = claims.map(c => c.claim);
+  const claimTexts = claims.map((c) => c.claim);
   const prompt = getSearchQueryPrompt(claimTexts, articleTitle);
   const text = await chatCompletion(prompt, languageCode);
+  const parsed = safeJsonParse(text, isRecord);
+  const queries = parsed ? toStringArray(parsed.queries) : [];
 
-  const parsed = safeJsonParse<{ queries: string[] }>(text);
-  if (!parsed || !parsed.queries) {
+  if (queries.length === 0) {
     return [articleTitle, claimTexts[0] || articleTitle].filter(Boolean);
   }
 
-  return parsed.queries;
+  return queries;
 }
 
-/**
- * Performs the final credibility investigation using all collected evidence.
- */
 export async function investigateCredibility(
   articleTitle: string,
   articleContent: string,
@@ -226,8 +330,8 @@ export async function investigateCredibility(
   factCheckData: string,
   relatedArticles: string,
   languageCode: string = 'id'
-): Promise<Record<string, unknown>> {
-  const claimTexts = claims.map(c => c.claim);
+): Promise<InvestigationAIResult> {
+  const claimTexts = claims.map((c) => c.claim);
   const prompt = getInvestigationPrompt(
     articleTitle,
     articleContent,
@@ -237,8 +341,8 @@ export async function investigateCredibility(
   );
 
   const text = await chatCompletion(prompt, languageCode);
+  const parsed = safeJsonParse(text, isRecord);
 
-  const parsed = safeJsonParse<Record<string, unknown>>(text);
   if (!parsed) {
     console.error('Failed to parse investigation response:', text);
     return {
@@ -250,9 +354,19 @@ export async function investigateCredibility(
       keyFindings: ['Analisis AI gagal diproses'],
       redFlags: [],
       positiveIndicators: [],
-      evidenceSources: [],
+      sourceEvaluations: [],
     };
   }
 
-  return parsed;
+  return {
+    overallVerdict: toVerdict(parsed.overallVerdict),
+    credibilityScore: typeof parsed.credibilityScore === 'number' ? parsed.credibilityScore : 50,
+    confidenceLevel: toConfidenceLevel(parsed.confidenceLevel),
+    summary: typeof parsed.summary === 'string' ? parsed.summary : 'Analisis tidak tersedia.',
+    claimAssessments: normalizeClaimAssessments(parsed.claimAssessments),
+    keyFindings: toStringArray(parsed.keyFindings),
+    redFlags: toStringArray(parsed.redFlags),
+    positiveIndicators: toStringArray(parsed.positiveIndicators),
+    sourceEvaluations: normalizeSourceEvaluations(parsed.sourceEvaluations),
+  };
 }

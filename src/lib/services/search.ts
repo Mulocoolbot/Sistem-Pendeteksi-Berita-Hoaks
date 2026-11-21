@@ -1,10 +1,12 @@
-// ============================================================
-// Google Custom Search Service — Related News Search
-// ============================================================
-
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import type { SearchResult } from '@/lib/types';
+import type {
+  ArticleData,
+  EvidenceSource,
+  SearchResult,
+  SourceEvaluation,
+} from '@/lib/types';
+import { getDomain, isValidUrl } from '@/lib/utils/sanitize';
 
 const CUSTOM_SEARCH_API_URL = 'https://www.googleapis.com/customsearch/v1';
 
@@ -24,21 +26,17 @@ interface GoogleSearchApiResponse {
   }>;
 }
 
-/**
- * Fallback web search using Yahoo scraping when Google API key is missing or fails (e.g. 403 forbidden).
- */
 async function searchYahoo(
   query: string,
   numResults: number = 5
 ): Promise<SearchResult[]> {
   try {
-    const response = await axios.get('https://search.yahoo.com/search', {
-      params: {
-        p: query,
-      },
+    const response = await axios.get<string>('https://search.yahoo.com/search', {
+      params: { p: query },
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
       },
       timeout: 10000,
@@ -47,50 +45,40 @@ async function searchYahoo(
     const $ = cheerio.load(response.data);
     const results: SearchResult[] = [];
 
-    $('div.algo').each((i, el) => {
+    $('div.algo').each((_, el) => {
       if (results.length >= numResults) return;
-      const a = $(el).find('.compTitle a, h3 a, a.d-flex').first();
-      const title = a.text().trim();
-      let link = a.attr('href');
-      
-      const snippetEl = $(el).find('.compText, .compText p, div.compText').first();
-      const snippet = snippetEl.text().trim();
+      const anchor = $(el).find('.compTitle a, h3 a, a.d-flex').first();
+      const title = anchor.text().trim();
+      let link = anchor.attr('href');
+      const snippet = $(el).find('.compText, .compText p, div.compText').first().text().trim();
 
-      if (title && link) {
-        // Clean Yahoo tracking redirect urls
-        if (link.includes('/RU=')) {
-          const match = link.match(/\/RU=([^/]+)/);
-          if (match) {
-            link = decodeURIComponent(match[1]);
-          }
-        }
-        
-        try {
-          const hostname = new URL(link).hostname.replace('www.', '');
-          results.push({
-            title,
-            link,
-            snippet,
-            displayLink: hostname,
-            datePublished: null,
-          });
-        } catch {
-          // Skip invalid URL
+      if (!title || !link) return;
+
+      if (link.includes('/RU=')) {
+        const match = link.match(/\/RU=([^/]+)/);
+        if (match) {
+          link = decodeURIComponent(match[1]);
         }
       }
+
+      if (!isValidUrl(link)) return;
+
+      results.push({
+        title,
+        link,
+        snippet,
+        displayLink: getDomain(link),
+        datePublished: null,
+      });
     });
 
     return results;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Yahoo fallback search error:', error);
     return [];
   }
 }
 
-/**
- * Searches for related news articles using Google Custom Search API.
- * Falls back to Yahoo search scraping if Google credentials are missing or fail (e.g. 403 Forbidden).
- */
 export async function searchRelatedNews(
   query: string,
   numResults: number = 5
@@ -115,27 +103,22 @@ export async function searchRelatedNews(
     });
 
     if (!response.data.items || response.data.items.length === 0) {
-      console.log('Google search returned empty. Trying Yahoo search fallback...');
       return searchYahoo(query, numResults);
     }
 
-    return response.data.items.map(item => ({
+    return response.data.items.map((item) => ({
       title: item.title || '',
       link: item.link || '',
       snippet: item.snippet || '',
       displayLink: item.displayLink || '',
       datePublished: extractDate(item.pagemap),
     }));
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Google Custom Search error. Falling back to Yahoo search...', error);
     return searchYahoo(query, numResults);
   }
 }
 
-/**
- * Searches for related news using multiple queries and deduplicates.
- * Throttles requests and limits to top 2 queries to avoid bot detection & rate-limiting.
- */
 export async function searchMultipleQueries(
   queries: string[],
   resultsPerQuery: number = 3
@@ -146,8 +129,8 @@ export async function searchMultipleQueries(
   for (const query of queries.slice(0, 2)) {
     try {
       if (allResults.length > 0) {
-        // Sleep for 1 second to avoid Yahoo INKApi rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Throttle consecutive requests to avoid Yahoo rate limiting.
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
       const results = await searchRelatedNews(query, resultsPerQuery);
       for (const result of results) {
@@ -156,17 +139,14 @@ export async function searchMultipleQueries(
           allResults.push(result);
         }
       }
-    } catch {
-      continue;
+    } catch (error: unknown) {
+      console.warn(`Search failed for query "${query}":`, error);
     }
   }
 
   return allResults;
 }
 
-/**
- * Formats search results into a readable string for the AI prompt.
- */
 export function formatSearchResults(results: SearchResult[]): string {
   if (results.length === 0) return '';
 
@@ -181,7 +161,40 @@ export function formatSearchResults(results: SearchResult[]): string {
     .join('\n\n');
 }
 
-// ── Helper ──────────────────────────────────────────────
+export function buildEvidenceSources(
+  relatedArticles: ArticleData[],
+  sourceEvaluations: SourceEvaluation[],
+  searchResults: SearchResult[]
+): EvidenceSource[] {
+  const evidenceSources: EvidenceSource[] = relatedArticles.map((art, index) => {
+    const evaluation = sourceEvaluations.find((e) => e.scrapedIndex === index + 1);
+    return {
+      title: art.title,
+      url: art.url,
+      siteName: art.siteName || getDomain(art.url),
+      snippet: art.description || art.content.substring(0, 160),
+      publishedDate: art.publishedDate,
+      similarityScore: evaluation ? evaluation.similarityScore : 0,
+      stance: evaluation ? evaluation.stance : 'neutral',
+    };
+  });
+
+  if (evidenceSources.length === 0 && searchResults.length > 0) {
+    for (const result of searchResults) {
+      evidenceSources.push({
+        title: result.title,
+        url: result.link,
+        siteName: result.displayLink,
+        snippet: result.snippet,
+        publishedDate: result.datePublished,
+        similarityScore: 0,
+        stance: 'neutral',
+      });
+    }
+  }
+
+  return evidenceSources;
+}
 
 function extractDate(
   pagemap?: {

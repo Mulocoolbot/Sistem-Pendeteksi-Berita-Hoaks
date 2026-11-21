@@ -1,87 +1,89 @@
-// ============================================================
-// API Route: Analyze URL — /api/analyze/url
-// ============================================================
-
 import { NextRequest, NextResponse } from 'next/server';
 import { scrapeArticle, scrapeMultipleArticles } from '@/lib/services/scraper';
-import { extractClaims, generateSearchQueries, investigateCredibility } from '@/lib/services/groq';
+import {
+  extractClaims,
+  generateSearchQueries,
+  investigateCredibility,
+} from '@/lib/services/groq';
 import { checkMultipleClaims, formatFactCheckResults } from '@/lib/services/factcheck';
-import { searchMultipleQueries, formatSearchResults } from '@/lib/services/search';
-import { isValidUrl, getDomain } from '@/lib/utils/sanitize';
-import type { InvestigationReport, ApiResponse } from '@/lib/types';
+import {
+  buildEvidenceSources,
+  formatSearchResults,
+  searchMultipleQueries,
+} from '@/lib/services/search';
+import { isRecord, isValidUrl } from '@/lib/utils/sanitize';
+import type { AnalyzeUrlRequest, ApiResponse, InvestigationReport } from '@/lib/types';
 
-export const maxDuration = 60; // Allow up to 60 seconds
+export const maxDuration = 60;
+
+function parseAnalyzeUrlRequest(body: unknown): AnalyzeUrlRequest | null {
+  if (!isRecord(body) || typeof body.url !== 'string') {
+    return null;
+  }
+  return {
+    url: body.url,
+    language: typeof body.language === 'string' ? body.language : 'id',
+  };
+}
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const body = await request.json();
-    const { url, language = 'id' } = body;
+    const rawBody: unknown = await request.json();
+    const parsedBody = parseAnalyzeUrlRequest(rawBody);
 
-    // Validate input
-    if (!url || !isValidUrl(url)) {
+    if (!parsedBody || !parsedBody.url || !isValidUrl(parsedBody.url)) {
       return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: 'URL tidak valid. Pastikan URL dimulai dengan http:// atau https://' },
+        {
+          success: false,
+          error: 'URL tidak valid. Pastikan URL dimulai dengan http:// atau https://',
+        },
         { status: 400 }
       );
     }
 
-    // ── Step 1: Scrape the article ────────────────────────
-    console.log('[1/6] Scraping article:', url);
+    const { url, language = 'id' } = parsedBody;
     const article = await scrapeArticle(url);
 
     if (!article.content || article.content.length < 50) {
       return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: 'Konten artikel tidak dapat diekstrak. Situs mungkin memblokir akses.' },
+        {
+          success: false,
+          error: 'Konten artikel tidak dapat diekstrak. Situs mungkin memblokir akses.',
+        },
         { status: 422 }
       );
     }
 
-    // ── Step 2: Extract claims using AI ───────────────────
-    console.log('[2/6] Extracting claims...');
     const claims = await extractClaims(article.title, article.content, language);
-
-    // ── Step 3: Generate search queries ───────────────────
-    console.log('[3/6] Generating search queries...');
     const searchQueries = await generateSearchQueries(claims, article.title, language);
-
-    // ── Step 4: Parallel search + fact-check ──────────────
-    console.log('[4/6] Searching & fact-checking...');
-    const claimTexts = claims.map(c => c.claim);
+    const claimTexts = claims.map((c) => c.claim);
 
     const [factCheckResults, searchResults] = await Promise.all([
       checkMultipleClaims(claimTexts),
       searchMultipleQueries(searchQueries),
     ]);
 
-    // ── Step 5: Scrape related articles for comparison ────
-    console.log('[5/6] Scraping related articles...');
-    const relatedUrls = searchResults
-      .map(r => r.link)
-      .filter(link => link !== url); // Exclude the original URL
+    const relatedUrls = searchResults.map((r) => r.link).filter((link) => link !== url);
+    const relatedArticles = await scrapeMultipleArticles(relatedUrls, 5);
 
-    const relatedArticles = await scrapeMultipleArticles(relatedUrls, 5); // Increased max from 3 to 5 for more sources
-
-    // Format evidence for AI
     const factCheckFormatted = formatFactCheckResults(factCheckResults);
     const searchFormatted = formatSearchResults(searchResults);
-
-    const relatedFormatted = relatedArticles.length > 0
-      ? relatedArticles
-          .map(
-            (a, i) =>
-              `[Scraped ${i + 1}] "${a.title}" (${a.siteName})\n${a.content.substring(0, 500)}`
-          )
-          .join('\n\n')
-      : '';
+    const relatedFormatted =
+      relatedArticles.length > 0
+        ? relatedArticles
+            .map(
+              (a, i) =>
+                `[Scraped ${i + 1}] "${a.title}" (${a.siteName})\n${a.content.substring(0, 500)}`
+            )
+            .join('\n\n')
+        : '';
 
     const combinedEvidence = [searchFormatted, relatedFormatted]
       .filter(Boolean)
       .join('\n\n---\n\n');
 
-    // ── Step 6: AI Investigation ──────────────────────────
-    console.log('[6/6] Running AI investigation...');
     const investigation = await investigateCredibility(
       article.title,
       article.content,
@@ -91,103 +93,39 @@ export async function POST(request: NextRequest) {
       language
     );
 
-    interface SourceEvaluation {
-      scrapedIndex?: number;
-      similarityScore?: number;
-      stance?: 'supports' | 'contradicts' | 'neutral';
-    }
+    const evidenceSources = buildEvidenceSources(
+      relatedArticles,
+      investigation.sourceEvaluations,
+      searchResults
+    );
 
-    interface InvestigationResult {
-      sourceEvaluations?: SourceEvaluation[];
-      overallVerdict?: string;
-      credibilityScore?: number;
-      confidenceLevel?: string;
-      summary?: string;
-      claimAssessments?: unknown[];
-      keyFindings?: string[];
-      redFlags?: string[];
-      positiveIndicators?: string[];
-    }
-
-    // Build evidence sources from actual scraped articles & AI valuations
-    const resultData = investigation as unknown as InvestigationResult;
-    const sourceEvaluations = resultData.sourceEvaluations || [];
-
-    const evidenceSources = relatedArticles.map((art, index) => {
-      const evaluation = sourceEvaluations.find(
-        (e) => e.scrapedIndex === index + 1
-      );
-      return {
-        title: art.title,
-        url: art.url,
-        siteName: art.siteName || getDomain(art.url),
-        snippet: art.description || art.content.substring(0, 160),
-        publishedDate: art.publishedDate,
-        similarityScore: typeof evaluation?.similarityScore === 'number'
-          ? evaluation.similarityScore
-          : 0,
-        stance: evaluation?.stance || 'neutral',
-      };
-    });
-
-    // Fallback to Google search items if no related articles could be scraped
-    if (evidenceSources.length === 0 && searchResults.length > 0) {
-      searchResults.forEach(r => {
-        evidenceSources.push({
-          title: r.title,
-          url: r.link,
-          siteName: r.displayLink,
-          snippet: r.snippet,
-          publishedDate: r.datePublished,
-          similarityScore: 0,
-          stance: 'neutral',
-        });
-      });
-    }
-
-    // Build the final report
     const report: InvestigationReport = {
       inputType: 'url',
       inputValue: url,
       articleTitle: article.title,
       articleContent: article.content.substring(0, 2000),
-
-      overallVerdict: (investigation.overallVerdict as InvestigationReport['overallVerdict']) || 'BELUM TERVERIFIKASI',
-      credibilityScore: typeof investigation.credibilityScore === 'number'
-        ? investigation.credibilityScore
-        : 50,
-      confidenceLevel: (investigation.confidenceLevel as InvestigationReport['confidenceLevel']) || 'low',
-
-      summary: (investigation.summary as string) || 'Analisis tidak tersedia.',
-      claimAssessments: Array.isArray(investigation.claimAssessments)
-        ? investigation.claimAssessments as InvestigationReport['claimAssessments']
-        : [],
+      overallVerdict: investigation.overallVerdict,
+      credibilityScore: investigation.credibilityScore,
+      confidenceLevel: investigation.confidenceLevel,
+      summary: investigation.summary,
+      claimAssessments: investigation.claimAssessments,
       evidenceSources,
       factCheckResults,
-
       analyzedAt: new Date().toISOString(),
       analysisTimeMs: Date.now() - startTime,
-
-      keyFindings: Array.isArray(investigation.keyFindings)
-        ? investigation.keyFindings as string[]
-        : [],
-      redFlags: Array.isArray(investigation.redFlags)
-        ? investigation.redFlags as string[]
-        : [],
-      positiveIndicators: Array.isArray(investigation.positiveIndicators)
-        ? investigation.positiveIndicators as string[]
-        : [],
+      keyFindings: investigation.keyFindings,
+      redFlags: investigation.redFlags,
+      positiveIndicators: investigation.positiveIndicators,
     };
-
-    console.log(`Analysis complete in ${report.analysisTimeMs}ms. Verdict: ${report.overallVerdict}`);
 
     return NextResponse.json<ApiResponse<InvestigationReport>>(
       { success: true, data: report },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Analysis error:', error);
-    const message = error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak terduga.';
+    const message =
+      error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak terduga.';
 
     return NextResponse.json<ApiResponse<null>>(
       { success: false, error: message },

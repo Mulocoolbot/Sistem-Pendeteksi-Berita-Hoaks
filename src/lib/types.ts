@@ -1,8 +1,18 @@
-// ============================================================
-// Type Definitions — Hoax Detection System
-// ============================================================
+export type Verdict = 'HOAKS' | 'FAKTA' | 'MISLEADING' | 'BELUM TERVERIFIKASI';
 
-/** Raw article data scraped from a URL */
+export type ConfidenceLevel = 'high' | 'medium' | 'low';
+
+export type SourceStance = 'supports' | 'contradicts' | 'neutral';
+
+export type ClaimImportance = 'high' | 'medium' | 'low';
+
+export type ImageContentType =
+  | 'news-screenshot'
+  | 'social-media'
+  | 'poster'
+  | 'meme'
+  | 'other';
+
 export interface ArticleData {
   url: string;
   title: string;
@@ -15,19 +25,10 @@ export interface ArticleData {
   language: string | null;
 }
 
-/** A single factual claim extracted from content */
 export interface ClaimData {
   claim: string;
   context: string;
-  importance: 'high' | 'medium' | 'low';
-}
-
-/** Result from Google Fact Check API */
-export interface FactCheckResult {
-  text: string;
-  claimant: string | null;
-  claimDate: string | null;
-  reviews: FactCheckReview[];
+  importance: ClaimImportance;
 }
 
 export interface FactCheckReview {
@@ -38,7 +39,13 @@ export interface FactCheckReview {
   languageCode: string;
 }
 
-/** Result from Google Custom Search */
+export interface FactCheckResult {
+  text: string;
+  claimant: string | null;
+  claimDate: string | null;
+  reviews: FactCheckReview[];
+}
+
 export interface SearchResult {
   title: string;
   link: string;
@@ -47,68 +54,77 @@ export interface SearchResult {
   datePublished: string | null;
 }
 
-/** A source article found during investigation */
 export interface EvidenceSource {
   title: string;
   url: string;
   siteName: string;
   snippet: string;
   publishedDate: string | null;
-  similarityScore: number; // 0-100
-  stance: 'supports' | 'contradicts' | 'neutral';
+  similarityScore: number;
+  stance: SourceStance;
 }
 
-/** Credibility assessment for a claim */
 export interface ClaimAssessment {
   claim: string;
-  verdict: 'HOAKS' | 'FAKTA' | 'MISLEADING' | 'BELUM TERVERIFIKASI';
-  confidence: number; // 0-100
+  verdict: Verdict;
+  confidence: number;
   explanation: string;
   supportingSources: string[];
   contradictingSources: string[];
 }
 
-/** The final investigation report */
+export interface SourceEvaluation {
+  scrapedIndex: number;
+  similarityScore: number;
+  stance: SourceStance;
+}
+
+export interface InvestigationAIResult {
+  overallVerdict: Verdict;
+  credibilityScore: number;
+  confidenceLevel: ConfidenceLevel;
+  summary: string;
+  claimAssessments: ClaimAssessment[];
+  keyFindings: string[];
+  redFlags: string[];
+  positiveIndicators: string[];
+  sourceEvaluations: SourceEvaluation[];
+}
+
 export interface InvestigationReport {
-  // Input info
   inputType: 'url' | 'image';
   inputValue: string;
   articleTitle: string;
   articleContent: string;
 
-  // Overall assessment
-  overallVerdict: 'HOAKS' | 'FAKTA' | 'MISLEADING' | 'BELUM TERVERIFIKASI';
-  credibilityScore: number; // 0-100
-  confidenceLevel: 'high' | 'medium' | 'low';
+  overallVerdict: Verdict;
+  credibilityScore: number;
+  confidenceLevel: ConfidenceLevel;
 
-  // Detailed analysis
   summary: string;
   claimAssessments: ClaimAssessment[];
   evidenceSources: EvidenceSource[];
   factCheckResults: FactCheckResult[];
 
-  // Metadata
   analyzedAt: string;
   analysisTimeMs: number;
 
-  // Reasoning
   keyFindings: string[];
   redFlags: string[];
   positiveIndicators: string[];
 }
 
-/** API request for URL analysis */
 export interface AnalyzeUrlRequest {
   url: string;
+  language?: string;
 }
 
-/** API request for image analysis */
 export interface AnalyzeImageRequest {
   imageBase64: string;
   mimeType: string;
+  language?: string;
 }
 
-/** API response wrapper */
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -116,7 +132,6 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
-/** Analysis progress steps */
 export type AnalysisStep =
   | 'idle'
   | 'extracting'
@@ -128,16 +143,9 @@ export type AnalysisStep =
   | 'complete'
   | 'error';
 
-export interface AnalysisProgress {
-  step: AnalysisStep;
-  message: string;
-  percentage: number;
-}
-
-/** Image analysis result from Gemini Vision */
 export interface ImageAnalysisResult {
   extractedText: string;
-  contentType: 'news-screenshot' | 'social-media' | 'poster' | 'meme' | 'other';
+  contentType: ImageContentType;
   detectedSource: string | null;
   detectedDate: string | null;
   summary: string;
