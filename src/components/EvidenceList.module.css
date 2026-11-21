@@ -1,9 +1,6 @@
-/* EvidenceList.module.css */
-
 .evidenceSection {
   max-width: 900px;
   margin: 0 auto var(--spacing-2xl);
-  animation: fadeInUp 0.6s ease-out 0.2s both;
 }
 
 .sectionTitle {
@@ -12,9 +9,6 @@
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: var(--spacing-lg);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
 }
 
 .evidenceGrid {
@@ -26,20 +20,19 @@
   display: flex;
   gap: var(--spacing-md);
   padding: var(--spacing-lg);
-  background: var(--bg-card);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border-glass);
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  transition: all var(--transition-base);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
   text-decoration: none;
   color: inherit;
 }
 
 .evidenceCard:hover {
-  border-color: var(--border-color-hover);
-  background: var(--bg-card-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+  background-color: var(--surface-hover);
+  text-decoration: none;
 }
 
 .stanceIndicator {
@@ -49,15 +42,15 @@
 }
 
 .stanceSupports {
-  background: var(--accent-green);
+  background-color: var(--status-success);
 }
 
 .stanceContradicts {
-  background: var(--accent-red);
+  background-color: var(--status-danger);
 }
 
 .stanceNeutral {
-  background: var(--accent-blue);
+  background-color: var(--border-strong);
 }
 
 .evidenceContent {
@@ -82,33 +75,38 @@
 }
 
 .stanceBadge {
-  padding: 0.15rem 0.5rem;
+  padding: 0.15rem 0.55rem;
   border-radius: var(--radius-full);
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
   white-space: nowrap;
   flex-shrink: 0;
+  border: 1px solid transparent;
 }
 
 .badgeSupports {
-  background: rgba(52, 211, 153, 0.15);
-  color: var(--accent-green);
+  background-color: var(--status-success-bg);
+  border-color: var(--status-success-border);
+  color: var(--status-success);
 }
 
 .badgeContradicts {
-  background: rgba(248, 113, 113, 0.15);
-  color: var(--accent-red);
+  background-color: var(--status-danger-bg);
+  border-color: var(--status-danger-border);
+  color: var(--status-danger);
 }
 
 .badgeNeutral {
-  background: rgba(59, 130, 246, 0.15);
-  color: var(--accent-blue-light);
+  background-color: var(--status-neutral-bg);
+  border-color: var(--status-neutral-border);
+  color: var(--status-neutral);
 }
 
 .evidenceMeta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--spacing-md);
   font-size: 0.8rem;
   color: var(--text-muted);
@@ -116,13 +114,12 @@
 }
 
 .evidenceSite {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 .evidenceSnippet {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   color: var(--text-secondary);
   line-height: 1.5;
   display: -webkit-box;
@@ -137,15 +134,16 @@
   align-items: center;
   gap: var(--spacing-sm);
   margin-top: var(--spacing-sm);
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .similarityTrack {
   flex: 1;
   max-width: 100px;
-  height: 3px;
-  background: var(--bg-tertiary);
+  height: 4px;
+  background-color: var(--surface-tertiary);
   border-radius: var(--radius-full);
   overflow: hidden;
 }
@@ -153,34 +151,39 @@
 .similarityFill {
   height: 100%;
   border-radius: var(--radius-full);
-  transition: width 0.8s ease-out;
+  transition: width 250ms ease-out;
 }
 
-/* ── Fact Check Results ────────────────────── */
 .factCheckSection {
   max-width: 900px;
   margin: 0 auto var(--spacing-2xl);
-  animation: fadeInUp 0.6s ease-out 0.3s both;
 }
 
 .factCheckCard {
   padding: var(--spacing-lg);
-  background: rgba(139, 92, 246, 0.05);
-  border: 1px solid rgba(139, 92, 246, 0.15);
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   margin-bottom: var(--spacing-md);
 }
 
 .factCheckClaim {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 500;
   color: var(--text-primary);
   margin-bottom: var(--spacing-sm);
 }
 
+.factCheckClaimant {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
 .factCheckReview {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--spacing-sm);
   font-size: 0.85rem;
   color: var(--text-secondary);
@@ -188,26 +191,27 @@
 }
 
 .reviewRating {
-  padding: 0.1rem 0.5rem;
-  background: rgba(139, 92, 246, 0.15);
+  padding: 0.12rem 0.5rem;
+  background-color: var(--status-neutral-bg);
+  border: 1px solid var(--status-neutral-border);
   border-radius: var(--radius-sm);
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--accent-purple);
+  color: var(--text-primary);
 }
 
 .reviewLink {
-  color: var(--accent-blue-light);
-  font-size: 0.8rem;
-}
-
-.reviewLink:hover {
-  text-decoration: underline;
+  color: var(--accent-link);
+  font-size: 0.82rem;
+  font-weight: 500;
 }
 
 .emptyState {
   text-align: center;
   padding: var(--spacing-xl);
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   color: var(--text-muted);
   font-size: 0.9rem;
 }

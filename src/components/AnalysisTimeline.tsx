@@ -10,21 +10,9 @@ interface AnalysisTimelineProps {
   language: LanguageCode;
 }
 
-interface StepConfig {
-  id: Exclude<AnalysisStep, 'idle' | 'complete' | 'error'>;
-  icon: string;
-}
+type TimelineStepId = Exclude<AnalysisStep, 'idle' | 'complete' | 'error'>;
 
-const STEPS: StepConfig[] = [
-  { id: 'extracting', icon: '📄' },
-  { id: 'analyzing-claims', icon: '🧠' },
-  { id: 'searching', icon: '🔍' },
-  { id: 'fact-checking', icon: '✅' },
-  { id: 'comparing', icon: '⚖️' },
-  { id: 'generating-report', icon: '📊' },
-];
-
-const STEP_ORDER: AnalysisStep[] = [
+const STEPS: TimelineStepId[] = [
   'extracting',
   'analyzing-claims',
   'searching',
@@ -37,7 +25,7 @@ export default function AnalysisTimeline({ currentStep, language }: AnalysisTime
   const t = TRANSLATIONS[language];
 
   const currentIndex = useMemo(
-    () => STEP_ORDER.indexOf(currentStep),
+    () => STEPS.indexOf(currentStep as TimelineStepId),
     [currentStep]
   );
 
@@ -62,8 +50,7 @@ export default function AnalysisTimeline({ currentStep, language }: AnalysisTime
     return 'pending';
   };
 
-  // Localized label and description getter helper
-  const getStepDetails = (id: string) => {
+  const getStepDetails = (id: TimelineStepId) => {
     switch (id) {
       case 'extracting':
         return { label: t.step_extracting, description: t.step_extracting_desc };
@@ -77,51 +64,77 @@ export default function AnalysisTimeline({ currentStep, language }: AnalysisTime
         return { label: t.step_comparing, description: t.step_comparing_desc };
       case 'generating-report':
         return { label: t.step_report, description: t.step_report_desc };
-      default:
-        return { label: '', description: '' };
     }
   };
 
-  return (
-    <div className={styles.timeline}>
-      <div className={styles.timelineTitle}>🔬 {t.timelineTitle}</div>
+  const roundedProgress = Math.round(progressPercent);
 
-      <div className={styles.steps}>
-        {STEPS.map((step, index) => {
+  return (
+    <section
+      className={styles.timeline}
+      aria-labelledby="timeline-title"
+      aria-live="polite"
+      aria-busy={currentStep !== 'complete' && currentStep !== 'error'}
+    >
+      <h2 id="timeline-title" className={styles.timelineTitle}>
+        {t.timelineTitle}
+      </h2>
+
+      <ol className={styles.steps}>
+        {STEPS.map((stepId, index) => {
           const state = getStepState(index);
-          const { label, description } = getStepDetails(step.id);
+          const { label, description } = getStepDetails(stepId);
+          const lineClass =
+            state === 'complete'
+              ? styles.stepLineComplete
+              : state === 'active'
+                ? styles.stepLineActive
+                : state === 'error'
+                  ? styles.stepLineError
+                  : '';
+          const iconClass =
+            state === 'complete'
+              ? styles.stepComplete
+              : state === 'active'
+                ? styles.stepActive
+                : state === 'error'
+                  ? styles.stepError
+                  : styles.stepPending;
+
           return (
-            <div key={step.id} className={`${styles.step} ${
-              state === 'complete' ? styles.stepLineComplete :
-              state === 'active' ? styles.stepLineActive :
-              state === 'error' ? styles.stepLineError :
-              ''
-            }`}>
-              <div
-                className={`${styles.stepIcon} ${
-                  state === 'complete' ? styles.stepComplete :
-                  state === 'active' ? styles.stepActive :
-                  state === 'error' ? styles.stepError :
-                  styles.stepPending
-                }`}
-              >
+            <li
+              key={stepId}
+              className={`${styles.step} ${lineClass}`}
+              aria-current={state === 'active' ? 'step' : undefined}
+            >
+              <div className={`${styles.stepIcon} ${iconClass}`} aria-hidden="true">
                 {state === 'active' ? (
                   <svg className={styles.spinnerSvg} viewBox="0 0 50 50">
-                    <circle className={styles.spinnerPath} cx="25" cy="25" r="20" fill="none" strokeWidth="5" />
+                    <circle
+                      className={styles.spinnerPath}
+                      cx="25"
+                      cy="25"
+                      r="20"
+                      fill="none"
+                      strokeWidth="5"
+                    />
                   </svg>
                 ) : state === 'complete' ? (
-                  '✓'
+                  'OK'
                 ) : state === 'error' ? (
-                  '✕'
+                  '!'
                 ) : (
-                  step.icon
+                  index + 1
                 )}
               </div>
               <div className={styles.stepContent}>
                 <div
                   className={`${styles.stepLabel} ${
-                    state === 'pending' ? styles.stepLabelPending :
-                    state === 'active' ? styles.stepLabelActive : ''
+                    state === 'pending'
+                      ? styles.stepLabelPending
+                      : state === 'active'
+                        ? styles.stepLabelActive
+                        : ''
                   }`}
                 >
                   {label}
@@ -130,24 +143,28 @@ export default function AnalysisTimeline({ currentStep, language }: AnalysisTime
                   <div className={styles.stepDescription}>{description}</div>
                 )}
               </div>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
 
       <div className={styles.progressWrapper}>
-        <div className={styles.progressBar}>
-          <div
-            className={`${styles.progressFill} ${currentStep !== 'complete' && currentStep !== 'error' ? styles.progressActive : ''}`}
-            style={{ width: `${progressPercent}%` }}
-          />
+        <div
+          className={styles.progressBar}
+          role="progressbar"
+          aria-label={t.timelineTitle}
+          aria-valuenow={roundedProgress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div className={styles.progressFill} style={{ width: `${progressPercent}%` }} />
         </div>
         <div className={styles.progressText}>
           {currentStep === 'error'
             ? t.error
-            : `${Math.round(progressPercent)}% ${t.complete.toLowerCase()}`}
+            : `${roundedProgress}% ${t.complete.toLowerCase()}`}
         </div>
       </div>
-    </div>
+    </section>
   );
 }
