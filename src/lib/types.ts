@@ -1,6 +1,8 @@
 import type { z } from 'zod';
 import type {
+  AiAuditMetadataSchema,
   AtomicClaimSchema,
+  AuditCritiqueSchema,
   ClaimExtractionOutputSchema,
   CredibilityTierSchema,
   ExtractedClaimItemSchema,
@@ -10,6 +12,7 @@ import type {
   ImageContentTypeSchema,
   JournalisticSignalsSchema,
   ProviderStatusSchema,
+  RerankerMethodSchema,
   UrlAnalyzeInputSchema,
   VerdictSchema,
 } from '@/lib/schemas/analysis';
@@ -59,6 +62,16 @@ export type FactCheckProviderStatus =
   | 'skipped';
 
 export type ProviderStatus = z.infer<typeof ProviderStatusSchema>;
+
+export type AuditCritique = z.infer<typeof AuditCritiqueSchema>;
+
+export type RerankerMethod = z.infer<typeof RerankerMethodSchema>;
+
+export type AiAuditMetadata = z.infer<typeof AiAuditMetadataSchema>;
+
+export type AiTaskType = 'extract' | 'reason' | 'audit' | 'vision';
+
+export type EvidenceItem = EvidenceSource;
 
 export interface ArticleData {
   url: string;
@@ -167,6 +180,7 @@ export interface InvestigationReport {
   analysisTimeMs: number;
   cached: boolean;
   providerStatus: ProviderStatus;
+  aiAudit: AiAuditMetadata;
 
   keyFindings: string[];
   redFlags: string[];

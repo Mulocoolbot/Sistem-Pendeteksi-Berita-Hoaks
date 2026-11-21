@@ -3,14 +3,18 @@ import {
   checkMultipleClaimsWithStatus,
   formatFactCheckResults,
 } from '@/lib/services/factcheck';
-import { extractClaimsAndSignals, synthesizeFinalVerdict } from '@/lib/services/groq';
+import {
+  auditSynthesisDraft,
+  extractClaimsAndSignals,
+  synthesizeFinalVerdictWithMeta,
+} from '@/lib/services/groq';
+import { rerankEvidence } from '@/lib/services/reranker';
 import {
   getLastScrapeStatus,
   scrapeMultipleArticlesWithStatus,
 } from '@/lib/services/scraper';
 import {
   buildEvidenceSources,
-  formatSearchResults,
   searchWithProvider,
 } from '@/lib/services/search';
 import type {
@@ -59,19 +63,64 @@ function normalizeUrlForComparison(rawUrl: string): string {
   }
 }
 
-function formatRelatedArticles(articles: ArticleData[]): string {
-  if (articles.length === 0) return '';
+function formatRerankedEvidenceForPrompt(sources: EvidenceSource[]): string {
+  if (sources.length === 0) return '';
 
-  return articles
+  return sources
+    .slice(0, APP_CONFIG.limits.rerankTopK)
+    .map((source, index) => {
+      const excerpt = source.snippet.substring(0, APP_CONFIG.limits.promptSnippetMaxLength);
+      return `[${index + 1}] "${source.title}"
+  URL: ${source.url}
+  Source: ${source.siteName} [${source.credibilityTier} | weight=${source.credibilityWeight} | ${source.credibilityLabel} | relevance=${source.similarityScore}%]
+  Date: ${source.publishedDate || 'Unknown'}
+  Excerpt: ${excerpt}`;
+    })
+    .join('\n\n');
+}
+
+function formatSupplementScrapedArticles(
+  articles: ArticleData[],
+  rerankedSources: EvidenceSource[]
+): string {
+  const includedUrls = new Set(
+    rerankedSources.map((source) => normalizeUrlForComparison(source.url))
+  );
+  const missingArticles = articles.filter(
+    (article) => !includedUrls.has(normalizeUrlForComparison(article.url))
+  );
+  if (missingArticles.length === 0) return '';
+
+  const excerptLimit = Math.min(320, APP_CONFIG.limits.relatedArticleExcerptLength);
+  return missingArticles
     .map((article, index) => {
       const credibility = classifyDomain(article.url);
       return `[Scraped ${index + 1}] "${article.title}" (${article.siteName || credibility.domain})
   URL: ${article.url}
   Credibility: ${credibility.tier} (weight=${credibility.weight}, ${credibility.label})
   Date: ${article.publishedDate || 'Unknown'}
-  Excerpt: ${article.content.substring(0, APP_CONFIG.limits.relatedArticleExcerptLength)}`;
+  Excerpt: ${article.content.substring(0, excerptLimit)}`;
     })
     .join('\n\n');
+}
+
+function formatAuditEvidenceForPrompt(
+  rerankedFormatted: string,
+  articles: ArticleData[],
+  rerankedSources: EvidenceSource[]
+): string {
+  const includedUrls = new Set(
+    rerankedSources.map((source) => normalizeUrlForComparison(source.url))
+  );
+  const extraUrls = articles
+    .filter((article) => !includedUrls.has(normalizeUrlForComparison(article.url)))
+    .map((article, index) => {
+      const credibility = classifyDomain(article.url);
+      return `[Scraped ${index + 1}] "${article.title}" | URL: ${article.url} | ${credibility.tier} (weight=${credibility.weight})`;
+    })
+    .join('\n');
+
+  return [rerankedFormatted, extraUrls].filter(Boolean).join('\n\n');
 }
 
 function deduplicateFactChecks(items: FactCheckResult[]): FactCheckResult[] {
@@ -456,9 +505,9 @@ export async function runInvestigation(
   const { articles: relatedArticles, warnings: relatedScrapeWarnings } =
     urlsToScrape.length > 0
       ? await scrapeMultipleArticlesWithStatus(
-          urlsToScrape,
-          APP_CONFIG.limits.maxRelatedArticlesToScrape
-        )
+        urlsToScrape,
+        APP_CONFIG.limits.maxRelatedArticlesToScrape
+      )
       : { articles: [], warnings: [] };
 
   rawWarnings.push(...relatedScrapeWarnings);
@@ -491,15 +540,32 @@ export async function runInvestigation(
     searchResults
   );
 
+  // Step 3.5: Semantic Evidence Reranking (Jina Reranker v2 -> Local BM25 fallback)
+  const rerankQuery = [
+    extraction.headline || articleTitle,
+    ...indexedClaims.map((claim) => claim.statement),
+  ]
+    .join(' ')
+    .trim();
+
+  const { items: rerankedEvidenceSources, method: rerankerUsed } = await rerankEvidence(
+    rerankQuery,
+    baseEvidenceSources,
+    APP_CONFIG.limits.rerankTopK
+  );
+
   const factCheckFormatted = formatFactCheckResults(factCheckResults);
-  const searchFormatted = formatSearchResults(searchResults);
-  const relatedFormatted = formatRelatedArticles(relatedArticles);
-  const combinedEvidence = [searchFormatted, relatedFormatted]
+  const rerankedFormatted = formatRerankedEvidenceForPrompt(rerankedEvidenceSources);
+  const supplementRelatedFormatted = formatSupplementScrapedArticles(
+    relatedArticles,
+    rerankedEvidenceSources
+  );
+  const combinedEvidence = [rerankedFormatted, supplementRelatedFormatted]
     .filter(Boolean)
     .join('\n\n---\n\n');
 
-  // Step 4: Final Synthesis & Anti-Hallucination Guard
-  const synthesis = await synthesizeFinalVerdict(
+  // Step 4: 2-Pass Reasoning (Pass 1 Synthesizer -> Pass 2 Adversarial Self-Critique)
+  const synthesisExecution = await synthesizeFinalVerdictWithMeta(
     {
       articleTitle: extraction.headline || articleTitle,
       articleContent,
@@ -510,6 +576,37 @@ export async function runInvestigation(
     },
     language
   );
+  const synthesis = synthesisExecution.data;
+
+  const auditEvidence = formatAuditEvidenceForPrompt(
+    rerankedFormatted,
+    relatedArticles,
+    rerankedEvidenceSources
+  );
+
+  const auditExecution = await auditSynthesisDraft(
+    {
+      articleTitle: extraction.headline || articleTitle,
+      draft: synthesis,
+      rerankedEvidenceData: auditEvidence,
+      factCheckData: factCheckFormatted,
+    },
+    language
+  );
+  const critique = auditExecution.data;
+
+  const selfCritiqueAdjusted = !critique.approved;
+  const effectiveVerdict: Verdict = selfCritiqueAdjusted
+    ? critique.adjustedVerdict
+    : synthesis.verdict;
+  const effectiveConfidence: number = selfCritiqueAdjusted
+    ? critique.adjustedConfidence
+    : synthesis.confidenceScore;
+
+  const modelUsed =
+    synthesisExecution.modelUsed === auditExecution.modelUsed
+      ? auditExecution.modelUsed
+      : `${synthesisExecution.modelUsed} -> ${auditExecution.modelUsed}`;
 
   const knownEvidenceWeights = new Map<string, number>();
   for (const source of baseEvidenceSources) {
@@ -544,7 +641,11 @@ export async function runInvestigation(
   const totalRelevantEvidence = baseEvidenceSources.length + factCheckReviewCount;
   const allEvidenceWeights = Array.from(knownEvidenceWeights.values());
 
-  // Normalize claims against extracted claims and enforce valid evidence URLs
+  const ungroundedClaimsLower = critique.ungroundedClaims
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  // Normalize claims against extracted claims, enforce valid evidence URLs, and apply Pass 2 critique
   const normalizedClaims: AtomicClaim[] = indexedClaims.map((indexed, idx) => {
     const matched =
       synthesis.claimResults.find((r) => r.id === indexed.id) ??
@@ -568,14 +669,43 @@ export async function runInvestigation(
       knownEvidenceWeights.has(normalizeUrlForComparison(url))
     );
 
+    const isFlaggedUngrounded =
+      selfCritiqueAdjusted &&
+      ungroundedClaimsLower.some(
+        (flagged) =>
+          indexed.id.toLowerCase() === flagged ||
+          indexed.statement.toLowerCase() === flagged ||
+          indexed.statement.toLowerCase().includes(flagged) ||
+          flagged.includes(indexed.statement.toLowerCase())
+      );
+
+    if (isFlaggedUngrounded && validSupportingUrls.length === 0) {
+      return {
+        id: indexed.id,
+        statement: matched?.statement || indexed.statement,
+        searchQuery: matched?.searchQuery || indexed.searchQuery,
+        status: 'UNVERIFIED',
+        confidence: Math.max(
+          0,
+          Math.min(40, Math.round(matched?.confidence ?? effectiveConfidence))
+        ),
+        reasoning: matched?.reasoning || critique.auditNote,
+        supportingUrls: [],
+      };
+    }
+
     const claimWeights =
       validSupportingUrls.length > 0
         ? validSupportingUrls
-            .map((url) => knownEvidenceWeights.get(normalizeUrlForComparison(url)) ?? 0.25)
+          .map((url) => knownEvidenceWeights.get(normalizeUrlForComparison(url)) ?? 0.25)
         : allEvidenceWeights;
 
+    const rawClaimConfidence = isFlaggedUngrounded
+      ? Math.min(matched?.confidence ?? effectiveConfidence, effectiveConfidence)
+      : (matched?.confidence ?? effectiveConfidence);
+
     const calibratedClaimConfidence = calibrateConfidenceScore(
-      matched?.confidence ?? synthesis.confidenceScore,
+      rawClaimConfidence,
       claimWeights
     );
 
@@ -606,7 +736,8 @@ export async function runInvestigation(
   );
 
   const shouldPromoteToVerified =
-    synthesis.verdict === 'UNVERIFIED' &&
+    !selfCritiqueAdjusted &&
+    effectiveVerdict === 'UNVERIFIED' &&
     totalRelevantEvidence > 0 &&
     totalCitedSupportingUrls > 0 &&
     hoaxOrMisleadingCount === 0 &&
@@ -616,7 +747,7 @@ export async function runInvestigation(
   const hasInsufficientEvidence =
     totalRelevantEvidence === 0 ||
     (factCheckReviewCount === 0 && totalCitedSupportingUrls === 0) ||
-    (synthesis.verdict === 'UNVERIFIED' && !shouldPromoteToVerified);
+    (effectiveVerdict === 'UNVERIFIED' && !shouldPromoteToVerified);
 
   const guardedClaims: AtomicClaim[] = normalizedClaims.map((claim) => {
     if (
@@ -637,26 +768,28 @@ export async function runInvestigation(
     ? 'UNVERIFIED'
     : shouldPromoteToVerified
       ? 'VERIFIED'
-      : synthesis.verdict;
+      : effectiveVerdict;
   const rawConfidenceForCalibration = shouldPromoteToVerified
     ? Math.max(
-        synthesis.confidenceScore,
-        Math.round(
-          guardedClaims
-            .filter((c) => c.status === 'VERIFIED')
-            .reduce((sum, c) => sum + c.confidence, 0) / Math.max(1, verifiedClaimsCount)
-        )
+      effectiveConfidence,
+      Math.round(
+        guardedClaims
+          .filter((c) => c.status === 'VERIFIED')
+          .reduce((sum, c) => sum + c.confidence, 0) / Math.max(1, verifiedClaimsCount)
       )
-    : synthesis.confidenceScore;
+    )
+    : effectiveConfidence;
   const finalConfidenceScore: number = hasInsufficientEvidence
-    ? Math.max(0, Math.min(40, Math.round(synthesis.confidenceScore)))
+    ? Math.max(0, Math.min(40, Math.round(effectiveConfidence)))
     : calibrateConfidenceScore(rawConfidenceForCalibration, allEvidenceWeights);
 
   const confidenceLevel = deriveConfidenceLevel(finalConfidenceScore);
   const credibilityScore = deriveCredibilityScore(finalVerdict, finalConfidenceScore);
 
+  const sourcesForReport =
+    rerankedEvidenceSources.length > 0 ? rerankedEvidenceSources : baseEvidenceSources;
   const evidenceSources = enrichEvidenceStanceAndSimilarity(
-    baseEvidenceSources,
+    sourcesForReport,
     guardedClaims,
     articleTitle,
     articleContent
@@ -691,6 +824,12 @@ export async function runInvestigation(
     analysisTimeMs: Date.now() - startTimeMs,
     cached: false,
     providerStatus,
+    aiAudit: {
+      modelUsed,
+      rerankerUsed,
+      selfCritiqueAdjusted,
+      auditNote: critique.auditNote,
+    },
     keyFindings,
     redFlags,
     positiveIndicators,
