@@ -87,3 +87,10 @@ export const ImageAnalyzeInputSchema = z.object({
   mimeType: z.string().min(1, 'Tipe MIME gambar wajib diisi.'),
   language: z.string().trim().min(2).optional().default('id'),
 });
+
+export const ProviderStatusSchema = z.object({
+  search: z.enum(['tavily', 'jina_search', 'failed', 'skipped']),
+  scraper: z.enum(['cheerio', 'jina', 'not_applicable']),
+  factcheck: z.enum(['tavily_factcheck', 'jina_factcheck', 'failed', 'skipped']),
+  warnings: z.array(z.string()),
+});

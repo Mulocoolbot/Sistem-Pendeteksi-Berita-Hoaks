@@ -1,11 +1,17 @@
 import { APP_CONFIG } from '@/lib/config';
-import { checkClaim, formatFactCheckResults } from '@/lib/services/factcheck';
+import {
+  checkMultipleClaimsWithStatus,
+  formatFactCheckResults,
+} from '@/lib/services/factcheck';
 import { extractClaimsAndSignals, synthesizeFinalVerdict } from '@/lib/services/groq';
-import { scrapeMultipleArticles } from '@/lib/services/scraper';
+import {
+  getLastScrapeStatus,
+  scrapeMultipleArticlesWithStatus,
+} from '@/lib/services/scraper';
 import {
   buildEvidenceSources,
   formatSearchResults,
-  searchRelatedNews,
+  searchWithProvider,
 } from '@/lib/services/search';
 import type {
   ArticleData,
@@ -16,6 +22,9 @@ import type {
   FactCheckResult,
   InvestigationReport,
   JournalisticSignals,
+  ProviderStatus,
+  ScraperProviderStatus,
+  SearchProviderStatus,
   SearchResult,
   SourceStance,
   Verdict,
@@ -70,10 +79,10 @@ function deduplicateFactChecks(items: FactCheckResult[]): FactCheckResult[] {
   const unique: FactCheckResult[] = [];
 
   for (const item of items) {
-    const key = `${item.text.trim().toLowerCase()}::${item.reviews
-      .map((r) => r.url)
-      .sort()
-      .join('|')}`;
+    const reviewUrl = item.url ? normalizeUrlForComparison(item.url) : '';
+    const key =
+      reviewUrl ||
+      `${item.claimText.trim().toLowerCase()}::${item.publisher.trim().toLowerCase()}`;
     if (!seen.has(key)) {
       seen.add(key);
       unique.push(item);
@@ -92,7 +101,7 @@ function deduplicateSearchResults(
   const unique: SearchResult[] = [];
 
   for (const item of items) {
-    const normalized = normalizeUrlForComparison(item.link);
+    const normalized = normalizeUrlForComparison(item.url);
     if (excludedNormalized && normalized === excludedNormalized) {
       continue;
     }
@@ -400,41 +409,81 @@ export async function runInvestigation(
   }));
 
   // Step 3: Parallel Evidence Verification per Claim via Promise.allSettled
-  const perClaimOutcomes = await Promise.allSettled(
-    indexedClaims.map(async (claim) => {
-      const [factCheckRes, searchRes] = await Promise.allSettled([
-        checkClaim(claim.statement),
-        searchRelatedNews(claim.searchQuery, APP_CONFIG.limits.resultsPerSearchQuery),
-      ]);
+  const [factCheckExecution, searchOutcomes] = await Promise.all([
+    checkMultipleClaimsWithStatus(
+      indexedClaims.map((claim) => claim.statement),
+      extraction.language
+    ),
+    Promise.allSettled(
+      indexedClaims.map((claim) =>
+        searchWithProvider(claim.searchQuery, APP_CONFIG.limits.resultsPerSearchQuery)
+      )
+    ),
+  ]);
 
-      return {
-        factChecks: factCheckRes.status === 'fulfilled' ? factCheckRes.value : [],
-        searchResults: searchRes.status === 'fulfilled' ? searchRes.value : [],
-      };
-    })
-  );
-
-  const rawFactChecks: FactCheckResult[] = [];
   const rawSearchResults: SearchResult[] = [];
+  const rawWarnings: string[] = [...factCheckExecution.warnings];
+  let tavilySucceeded = false;
+  let jinaSearchSucceeded = false;
 
-  for (const outcome of perClaimOutcomes) {
+  for (const outcome of searchOutcomes) {
     if (outcome.status === 'fulfilled') {
-      rawFactChecks.push(...outcome.value.factChecks);
-      rawSearchResults.push(...outcome.value.searchResults);
+      rawWarnings.push(...outcome.value.warnings);
+      if (outcome.value.provider === 'tavily') {
+        tavilySucceeded = true;
+      } else if (outcome.value.provider === 'jina_search') {
+        jinaSearchSucceeded = true;
+      }
+      rawSearchResults.push(...outcome.value.results);
+    } else {
+      rawWarnings.push('Salah satu permintaan pencarian berita gagal diproses.');
     }
   }
 
-  const factCheckResults = deduplicateFactChecks(rawFactChecks);
+  const searchStatus: SearchProviderStatus =
+    indexedClaims.length === 0
+      ? 'skipped'
+      : tavilySucceeded
+        ? 'tavily'
+        : jinaSearchSucceeded
+          ? 'jina_search'
+          : 'failed';
+
+  const factCheckResults = deduplicateFactChecks(factCheckExecution.results);
   const searchResults = deduplicateSearchResults(rawSearchResults, excludeUrl);
 
-  const urlsToScrape = searchResults.map((result) => result.link);
-  const relatedArticles =
+  const urlsToScrape = searchResults.map((result) => result.url);
+  const { articles: relatedArticles, warnings: relatedScrapeWarnings } =
     urlsToScrape.length > 0
-      ? await scrapeMultipleArticles(
+      ? await scrapeMultipleArticlesWithStatus(
           urlsToScrape,
           APP_CONFIG.limits.maxRelatedArticlesToScrape
         )
-      : [];
+      : { articles: [], warnings: [] };
+
+  rawWarnings.push(...relatedScrapeWarnings);
+
+  let scraperStatus: ScraperProviderStatus = 'not_applicable';
+  if (inputType === 'url') {
+    const mainScrapeStatus = getLastScrapeStatus(inputValue);
+    if (mainScrapeStatus) {
+      scraperStatus = mainScrapeStatus.extractor;
+      if (mainScrapeStatus.warning) {
+        rawWarnings.push(mainScrapeStatus.warning);
+      }
+    } else if (relatedArticles.some((article) => article.extractor === 'jina')) {
+      scraperStatus = 'jina';
+    } else {
+      scraperStatus = 'cheerio';
+    }
+  }
+
+  const providerStatus: ProviderStatus = {
+    search: searchStatus,
+    scraper: scraperStatus,
+    factcheck: factCheckExecution.status,
+    warnings: Array.from(new Set(rawWarnings.filter(Boolean))),
+  };
 
   const baseEvidenceSources = buildEvidenceSources(
     relatedArticles,
@@ -470,6 +519,13 @@ export async function runInvestigation(
     );
   }
   for (const fc of factCheckResults) {
+    if (fc.url) {
+      const domainInfo = classifyDomain(fc.url);
+      const normUrl = normalizeUrlForComparison(fc.url);
+      if (!knownEvidenceWeights.has(normUrl)) {
+        knownEvidenceWeights.set(normUrl, domainInfo.weight);
+      }
+    }
     for (const rev of fc.reviews) {
       if (rev.url) {
         const domainInfo = classifyDomain(rev.url);
@@ -482,7 +538,7 @@ export async function runInvestigation(
   }
 
   const factCheckReviewCount = factCheckResults.reduce(
-    (sum, fc) => sum + fc.reviews.length,
+    (sum, fc) => sum + Math.max(1, fc.reviews.length),
     0
   );
   const totalRelevantEvidence = baseEvidenceSources.length + factCheckReviewCount;
@@ -634,6 +690,7 @@ export async function runInvestigation(
     analyzedAt: new Date().toISOString(),
     analysisTimeMs: Date.now() - startTimeMs,
     cached: false,
+    providerStatus,
     keyFindings,
     redFlags,
     positiveIndicators,

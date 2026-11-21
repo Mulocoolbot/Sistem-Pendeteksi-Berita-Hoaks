@@ -9,6 +9,7 @@ import type {
   ImageAnalyzeInputSchema,
   ImageContentTypeSchema,
   JournalisticSignalsSchema,
+  ProviderStatusSchema,
   UrlAnalyzeInputSchema,
   VerdictSchema,
 } from '@/lib/schemas/analysis';
@@ -41,6 +42,24 @@ export type SourceStance = 'supports' | 'contradicts' | 'neutral';
 
 export type ClaimImportance = 'high' | 'medium' | 'low';
 
+export type SearchProvider = 'tavily' | 'jina_search';
+
+export type SearchProviderStatus = 'tavily' | 'jina_search' | 'failed' | 'skipped';
+
+export type ScraperExtractor = 'cheerio' | 'jina';
+
+export type ScraperProviderStatus = 'cheerio' | 'jina' | 'not_applicable';
+
+export type FactCheckProvider = 'tavily_factcheck' | 'jina_factcheck';
+
+export type FactCheckProviderStatus =
+  | 'tavily_factcheck'
+  | 'jina_factcheck'
+  | 'failed'
+  | 'skipped';
+
+export type ProviderStatus = z.infer<typeof ProviderStatusSchema>;
+
 export interface ArticleData {
   url: string;
   title: string;
@@ -51,7 +70,11 @@ export interface ArticleData {
   siteName: string | null;
   imageUrl: string | null;
   language: string | null;
+  domain: string;
+  extractor: ScraperExtractor;
 }
+
+export type ScrapeResult = ArticleData;
 
 export interface ClaimData {
   claim: string;
@@ -64,12 +87,20 @@ export interface FactCheckReview {
   url: string;
   title: string;
   rating: string;
+  textualRating: string;
+  reviewDate: string | null;
   languageCode: string;
   credibilityTier?: CredibilityTier;
   credibilityLabel?: string;
 }
 
 export interface FactCheckResult {
+  claimText: string;
+  publisher: string;
+  summary: string;
+  url: string;
+  sourceDomain: string;
+  provider: FactCheckProvider;
   text: string;
   claimant: string | null;
   claimDate: string | null;
@@ -78,10 +109,11 @@ export interface FactCheckResult {
 
 export interface SearchResult {
   title: string;
-  link: string;
+  url: string;
   snippet: string;
-  displayLink: string;
-  datePublished: string | null;
+  publishedDate: string | null;
+  sourceDomain: string;
+  provider: SearchProvider;
 }
 
 export interface EvidenceSource {
@@ -134,6 +166,7 @@ export interface InvestigationReport {
   analyzedAt: string;
   analysisTimeMs: number;
   cached: boolean;
+  providerStatus: ProviderStatus;
 
   keyFindings: string[];
   redFlags: string[];

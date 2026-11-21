@@ -1,223 +1,212 @@
 import axios from 'axios';
-import * as cheerio from 'cheerio';
-import { APP_CONFIG, getEnvConfig, HTTP_TIMEOUT_MS } from '@/lib/config';
+import { APP_CONFIG, getEnvConfig } from '@/lib/config';
 import type {
   ArticleData,
   EvidenceSource,
+  SearchProvider,
   SearchResult,
   SourceEvaluation,
 } from '@/lib/types';
 import { classifyDomain } from '@/lib/utils/credibility';
 import { getDomain, isValidUrl } from '@/lib/utils/sanitize';
 
-interface GoogleSearchApiResponse {
-  items?: Array<{
+interface TavilySearchApiResponse {
+  results?: Array<{
     title?: string;
-    link?: string;
-    snippet?: string;
-    displayLink?: string;
-    pagemap?: {
-      metatags?: Array<{
-        'article:published_time'?: string;
-        'og:updated_time'?: string;
-        date?: string;
-      }>;
-    };
+    url?: string;
+    content?: string;
+    published_date?: string;
+    publishedDate?: string;
   }>;
 }
 
-async function fetchBingNewsRssItems(
+interface JinaSearchItem {
+  title?: string;
+  url?: string;
+  description?: string;
+  content?: string;
+  date?: string;
+  publishedTime?: string;
+}
+
+interface JinaSearchApiResponse {
+  data?: JinaSearchItem[];
+  results?: JinaSearchItem[];
+}
+
+export interface SearchProviderExecutionResult {
+  results: SearchResult[];
+  provider: SearchProvider | 'failed';
+  warnings: string[];
+}
+
+function describeError(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    if (error.response?.status) {
+      return `HTTP ${error.response.status}`;
+    }
+    if (error.code === 'ECONNABORTED') {
+      return 'timeout';
+    }
+    return error.code || error.message || 'network error';
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'unknown error';
+}
+
+async function searchWithTavily(
   query: string,
-  numResults: number
+  numResults: number,
+  apiKey: string
 ): Promise<SearchResult[]> {
-  try {
-    const response = await axios.get<string>('https://www.bing.com/news/search', {
-      params: { q: query, format: 'rss' },
+  const response = await axios.post<TavilySearchApiResponse>(
+    APP_CONFIG.endpoints.tavilySearch,
+    {
+      api_key: apiKey,
+      query,
+      search_depth: 'basic',
+      max_results: numResults,
+    },
+    {
       headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-        Accept: 'application/rss+xml,application/xml,text/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
       },
-      timeout: HTTP_TIMEOUT_MS,
-    });
+      timeout: APP_CONFIG.timeouts.externalApiMs,
+    }
+  );
 
-    const $ = cheerio.load(response.data, { xmlMode: true });
-    const results: SearchResult[] = [];
+  const items = Array.isArray(response.data?.results) ? response.data.results : [];
 
-    $('item').each((_, el) => {
-      if (results.length >= numResults) return;
-      const title = $(el).find('title').first().text().trim();
-      const rawLink = $(el).find('link').first().text().trim();
-      const description = $(el).find('description').first().text().trim();
-      const pubDate = $(el).find('pubDate').first().text().trim();
-
-      if (!title || !rawLink) return;
-
-      let targetUrl = rawLink;
-      try {
-        const parsedLink = new URL(rawLink);
-        const embeddedUrl = parsedLink.searchParams.get('url');
-        if (embeddedUrl && isValidUrl(embeddedUrl)) {
-          targetUrl = embeddedUrl;
-        }
-      } catch {
-        // Keep rawLink if Bing redirect parsing fails.
-      }
-
-      if (!isValidUrl(targetUrl)) return;
-
-      results.push({
-        title,
-        link: targetUrl,
-        snippet: description,
-        displayLink: getDomain(targetUrl),
-        datePublished: pubDate || null,
-      });
-    });
-
-    return results;
-  } catch (error: unknown) {
-    console.error('Bing News RSS fallback search error:', error);
-    return [];
-  }
+  return items
+    .filter((item): item is typeof item & { url: string } =>
+      Boolean(item.url && isValidUrl(item.url))
+    )
+    .slice(0, numResults)
+    .map((item) => ({
+      title: item.title?.trim() || getDomain(item.url),
+      url: item.url,
+      snippet: item.content?.trim() || '',
+      publishedDate: item.published_date || item.publishedDate || null,
+      sourceDomain: getDomain(item.url),
+      provider: 'tavily' as const,
+    }));
 }
 
-async function searchBingNewsRss(
+async function searchWithJina(
   query: string,
-  numResults: number
+  numResults: number,
+  jinaApiKey: string
 ): Promise<SearchResult[]> {
-  const initialResults = await fetchBingNewsRssItems(query, numResults);
-  if (initialResults.length > 0) {
-    return initialResults;
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'X-Respond-With': 'no-content',
+  };
+
+  if (jinaApiKey) {
+    headers.Authorization = `Bearer ${jinaApiKey}`;
   }
 
-  const words = query.trim().split(/\s+/).filter(Boolean);
-  if (words.length > 4) {
-    const shortQuery = words.slice(0, 4).join(' ');
-    return fetchBingNewsRssItems(shortQuery, numResults);
-  }
+  const endpoint = `${APP_CONFIG.endpoints.jinaSearch}${encodeURIComponent(query)}`;
+  const response = await axios.get<JinaSearchApiResponse>(endpoint, {
+    headers,
+    timeout: APP_CONFIG.timeouts.externalApiMs,
+  });
 
-  return [];
+  const rawItems = Array.isArray(response.data?.data)
+    ? response.data.data
+    : Array.isArray(response.data?.results)
+      ? response.data.results
+      : [];
+
+  return rawItems
+    .filter((item): item is JinaSearchItem & { url: string } =>
+      Boolean(item.url && isValidUrl(item.url))
+    )
+    .slice(0, numResults)
+    .map((item) => ({
+      title: item.title?.trim() || getDomain(item.url),
+      url: item.url,
+      snippet: item.description?.trim() || item.content?.trim() || '',
+      publishedDate: item.date || item.publishedTime || null,
+      sourceDomain: getDomain(item.url),
+      provider: 'jina_search' as const,
+    }));
 }
 
-async function searchYahoo(
+export async function searchWithProvider(
   query: string,
   numResults: number = APP_CONFIG.limits.defaultSearchResults
-): Promise<SearchResult[]> {
-  try {
-    const response = await axios.get<string>(APP_CONFIG.endpoints.yahooSearch, {
-      params: { p: query },
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-      timeout: HTTP_TIMEOUT_MS,
-    });
+): Promise<SearchProviderExecutionResult> {
+  const { tavilyApiKey, jinaApiKey } = getEnvConfig();
+  const warnings: string[] = [];
+  const trimmedTavilyKey = tavilyApiKey.trim();
+  const trimmedJinaKey = jinaApiKey.trim();
 
-    const $ = cheerio.load(response.data);
-    const results: SearchResult[] = [];
-
-    $('div.algo').each((_, el) => {
-      if (results.length >= numResults) return;
-      const anchor = $(el).find('.compTitle a, h3 a, a.d-flex').first();
-      const title = anchor.text().trim();
-      let link = anchor.attr('href');
-      const snippet = $(el).find('.compText, .compText p, div.compText').first().text().trim();
-
-      if (!title || !link) return;
-
-      if (link.includes('/RU=')) {
-        const match = link.match(/\/RU=([^/]+)/);
-        if (match) {
-          link = decodeURIComponent(match[1]);
-        }
-      }
-
-      if (!isValidUrl(link)) return;
-
-      results.push({
-        title,
-        link,
-        snippet,
-        displayLink: getDomain(link),
-        datePublished: null,
-      });
-    });
-
-    if (results.length > 0) {
-      return results;
+  if (trimmedTavilyKey) {
+    try {
+      const results = await searchWithTavily(query, numResults, trimmedTavilyKey);
+      return {
+        results,
+        provider: 'tavily',
+        warnings,
+      };
+    } catch (error: unknown) {
+      const reason = describeError(error);
+      console.error('Tavily search error:', error);
+      warnings.push(`Tavily Search gagal (${reason}); beralih ke Jina Search.`);
     }
-
-    return searchBingNewsRss(query, numResults);
-  } catch (error: unknown) {
-    console.error('Yahoo fallback search error. Trying Bing News RSS...', error);
-    return searchBingNewsRss(query, numResults);
+  } else {
+    warnings.push('TAVILY_API_KEY tidak tersedia; menggunakan Jina Search sebagai fallback.');
   }
+
+  try {
+    const results = await searchWithJina(query, numResults, trimmedJinaKey);
+    return {
+      results,
+      provider: 'jina_search',
+      warnings,
+    };
+  } catch (error: unknown) {
+    const reason = describeError(error);
+    console.error('Jina search error:', error);
+    warnings.push(`Jina Search gagal (${reason}).`);
+  }
+
+  return {
+    results: [],
+    provider: 'failed',
+    warnings,
+  };
 }
 
 export async function searchRelatedNews(
   query: string,
   numResults: number = APP_CONFIG.limits.defaultSearchResults
 ): Promise<SearchResult[]> {
-  const { googleCustomSearchApiKey, googleSearchEngineId } = getEnvConfig();
-
-  if (!googleCustomSearchApiKey || !googleSearchEngineId) {
-    return searchYahoo(query, numResults);
-  }
-
-  try {
-    const response = await axios.get<GoogleSearchApiResponse>(
-      APP_CONFIG.endpoints.googleCustomSearch,
-      {
-        params: {
-          key: googleCustomSearchApiKey,
-          cx: googleSearchEngineId,
-          q: query,
-          num: Math.min(numResults, APP_CONFIG.limits.maxGoogleSearchResults),
-        },
-        timeout: HTTP_TIMEOUT_MS,
-      }
-    );
-
-    if (!response.data.items || response.data.items.length === 0) {
-      return searchYahoo(query, numResults);
-    }
-
-    return response.data.items
-      .filter((item): item is typeof item & { link: string } => Boolean(item.link && isValidUrl(item.link)))
-      .map((item) => ({
-        title: item.title || '',
-        link: item.link,
-        snippet: item.snippet || '',
-        displayLink: item.displayLink || getDomain(item.link),
-        datePublished: extractDate(item.pagemap),
-      }));
-  } catch (error: unknown) {
-    console.error('Google Custom Search error. Falling back to Yahoo search...', error);
-    return searchYahoo(query, numResults);
-  }
+  const execution = await searchWithProvider(query, numResults);
+  return execution.results;
 }
 
 export async function searchMultipleQueries(
   queries: string[],
   resultsPerQuery: number = APP_CONFIG.limits.resultsPerSearchQuery
 ): Promise<SearchResult[]> {
+  const limitedQueries = queries.slice(0, APP_CONFIG.limits.maxSearchQueriesToRun);
+  const outcomes = await Promise.allSettled(
+    limitedQueries.map((query) => searchRelatedNews(query, resultsPerQuery))
+  );
+
   const allResults: SearchResult[] = [];
   const seenUrls = new Set<string>();
 
-  for (const query of queries.slice(0, APP_CONFIG.limits.maxSearchQueriesToRun)) {
-    if (allResults.length > 0) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, APP_CONFIG.timeouts.searchThrottleDelayMs)
-      );
-    }
-    const results = await searchRelatedNews(query, resultsPerQuery);
-    for (const result of results) {
-      if (!seenUrls.has(result.link)) {
-        seenUrls.add(result.link);
+  for (const outcome of outcomes) {
+    if (outcome.status !== 'fulfilled') continue;
+    for (const result of outcome.value) {
+      if (!seenUrls.has(result.url)) {
+        seenUrls.add(result.url);
         allResults.push(result);
       }
     }
@@ -230,13 +219,15 @@ export function formatSearchResults(results: SearchResult[]): string {
   if (results.length === 0) return '';
 
   return results
+    .slice(0, APP_CONFIG.limits.maxPromptSearchResults)
     .map((r, i) => {
-      const credibility = classifyDomain(r.link);
+      const credibility = classifyDomain(r.url);
+      const excerpt = r.snippet.substring(0, APP_CONFIG.limits.promptSnippetMaxLength);
       return `[${i + 1}] "${r.title}"
-  URL: ${r.link}
-  Source: ${r.displayLink} [${credibility.tier} | weight=${credibility.weight} | ${credibility.label}]
-  Date: ${r.datePublished || 'Unknown'}
-  Excerpt: ${r.snippet}`;
+  URL: ${r.url}
+  Source: ${r.sourceDomain} [${credibility.tier} | weight=${credibility.weight} | ${credibility.label} | via=${r.provider}]
+  Date: ${r.publishedDate || 'Unknown'}
+  Excerpt: ${excerpt}`;
     })
     .join('\n\n');
 }
@@ -256,7 +247,7 @@ export function buildEvidenceSources(
     evidenceSources.push({
       title: art.title,
       url: art.url,
-      siteName: art.siteName || getDomain(art.url),
+      siteName: art.siteName || art.domain || getDomain(art.url),
       snippet:
         art.description ||
         art.content.substring(0, APP_CONFIG.limits.evidenceSnippetLength),
@@ -270,15 +261,15 @@ export function buildEvidenceSources(
   });
 
   for (const result of searchResults) {
-    if (seenUrls.has(result.link)) continue;
-    seenUrls.add(result.link);
-    const credibility = classifyDomain(result.link);
+    if (seenUrls.has(result.url)) continue;
+    seenUrls.add(result.url);
+    const credibility = classifyDomain(result.url);
     evidenceSources.push({
       title: result.title,
-      url: result.link,
-      siteName: result.displayLink || getDomain(result.link),
+      url: result.url,
+      siteName: result.sourceDomain || getDomain(result.url),
       snippet: result.snippet,
-      publishedDate: result.datePublished,
+      publishedDate: result.publishedDate,
       similarityScore: 0,
       stance: 'neutral',
       credibilityTier: credibility.tier,
@@ -288,23 +279,4 @@ export function buildEvidenceSources(
   }
 
   return evidenceSources;
-}
-
-function extractDate(
-  pagemap?: {
-    metatags?: Array<{
-      'article:published_time'?: string;
-      'og:updated_time'?: string;
-      date?: string;
-    }>;
-  }
-): string | null {
-  if (!pagemap?.metatags?.length) return null;
-  const meta = pagemap.metatags[0];
-  return (
-    meta['article:published_time'] ||
-    meta['og:updated_time'] ||
-    meta.date ||
-    null
-  );
 }
