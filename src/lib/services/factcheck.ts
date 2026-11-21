@@ -1,7 +1,6 @@
 import axios from 'axios';
+import { APP_CONFIG, getEnvConfig } from '@/lib/config';
 import type { FactCheckResult, FactCheckReview } from '@/lib/types';
-
-const FACT_CHECK_API_URL = 'https://factchecktools.googleapis.com/v1alpha1/claims:search';
 
 interface FactCheckApiResponse {
   claims?: Array<{
@@ -22,21 +21,24 @@ interface FactCheckApiResponse {
 }
 
 export async function checkClaim(claim: string): Promise<FactCheckResult[]> {
-  const apiKey = process.env.GOOGLE_FACT_CHECK_API_KEY;
-  if (!apiKey) {
+  const { googleFactCheckApiKey } = getEnvConfig();
+  if (!googleFactCheckApiKey) {
     console.warn('GOOGLE_FACT_CHECK_API_KEY not configured. Skipping fact-check lookup.');
     return [];
   }
 
   try {
-    const response = await axios.get<FactCheckApiResponse>(FACT_CHECK_API_URL, {
-      params: {
-        query: claim,
-        key: apiKey,
-        languageCode: '',
-      },
-      timeout: 10000,
-    });
+    const response = await axios.get<FactCheckApiResponse>(
+      APP_CONFIG.endpoints.googleFactCheck,
+      {
+        params: {
+          query: claim,
+          key: googleFactCheckApiKey,
+          languageCode: '',
+        },
+        timeout: APP_CONFIG.timeouts.externalApiMs,
+      }
+    );
 
     if (!response.data.claims) {
       return [];

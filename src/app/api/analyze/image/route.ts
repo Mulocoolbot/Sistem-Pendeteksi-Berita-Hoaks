@@ -1,37 +1,47 @@
-import { NextRequest, NextResponse } from 'next/server';
-import {
-  analyzeImage,
-  extractClaims,
-  generateSearchQueries,
-  investigateCredibility,
-} from '@/lib/services/groq';
-import { checkMultipleClaims, formatFactCheckResults } from '@/lib/services/factcheck';
-import {
-  buildEvidenceSources,
-  formatSearchResults,
-  searchMultipleQueries,
-} from '@/lib/services/search';
-import { scrapeMultipleArticles } from '@/lib/services/scraper';
+import { NextRequest } from 'next/server';
+import { APP_CONFIG } from '@/lib/config';
+import { runInvestigationPipeline } from '@/lib/services/analyzer';
+import { analyzeImage } from '@/lib/services/groq';
+import type { AnalyzeImageRequest } from '@/lib/types';
+import { AppError, createErrorResponse, createSuccessResponse, parseJsonBody } from '@/lib/utils/errors';
 import { isRecord } from '@/lib/utils/sanitize';
-import type { AnalyzeImageRequest, ApiResponse, InvestigationReport } from '@/lib/types';
 
 export const maxDuration = 60;
 
-const ALLOWED_MIMES = new Set([
-  'image/png',
-  'image/jpeg',
-  'image/jpg',
-  'image/webp',
-  'image/gif',
-]);
+function estimateBase64Bytes(base64Input: string): number {
+  const base64Data = base64Input.includes(',')
+    ? base64Input.slice(base64Input.indexOf(',') + 1)
+    : base64Input;
+  const normalized = base64Data.replace(/\s+/g, '');
+  const padding = normalized.endsWith('==') ? 2 : normalized.endsWith('=') ? 1 : 0;
+  return Math.floor((normalized.length * 3) / 4) - padding;
+}
 
-function parseAnalyzeImageRequest(body: unknown): AnalyzeImageRequest | null {
-  if (!isRecord(body)) {
-    return null;
+function parseAnalyzeImageRequest(body: unknown): AnalyzeImageRequest {
+  if (
+    !isRecord(body) ||
+    typeof body.imageBase64 !== 'string' ||
+    typeof body.mimeType !== 'string' ||
+    !body.imageBase64 ||
+    !body.mimeType
+  ) {
+    throw AppError.badRequest('Gambar tidak valid. Silakan upload ulang.', 'INVALID_IMAGE');
   }
-  if (typeof body.imageBase64 !== 'string' || typeof body.mimeType !== 'string') {
-    return null;
+
+  if (!APP_CONFIG.limits.allowedImageMimes.includes(body.mimeType)) {
+    throw AppError.badRequest(
+      `Format gambar tidak didukung: ${body.mimeType}. Gunakan PNG, JPEG, atau WebP.`,
+      'UNSUPPORTED_IMAGE_FORMAT'
+    );
   }
+
+  if (estimateBase64Bytes(body.imageBase64) > APP_CONFIG.limits.maxImageSizeBytes) {
+    throw AppError.payloadTooLarge(
+      'Ukuran gambar melebihi batas maksimal 5MB.',
+      'IMAGE_TOO_LARGE'
+    );
+  }
+
   return {
     imageBase64: body.imageBase64,
     mimeType: body.mimeType,
@@ -43,118 +53,38 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const rawBody: unknown = await request.json();
-    const parsedBody = parseAnalyzeImageRequest(rawBody);
-
-    if (!parsedBody || !parsedBody.imageBase64 || !parsedBody.mimeType) {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: 'Gambar tidak valid. Silakan upload ulang.' },
-        { status: 400 }
-      );
-    }
-
-    const { imageBase64, mimeType, language = 'id' } = parsedBody;
-
-    if (!ALLOWED_MIMES.has(mimeType)) {
-      return NextResponse.json<ApiResponse<null>>(
-        {
-          success: false,
-          error: `Format gambar tidak didukung: ${mimeType}. Gunakan PNG, JPEG, atau WebP.`,
-        },
-        { status: 400 }
-      );
-    }
+    const rawBody = await parseJsonBody(request);
+    const { imageBase64, mimeType, language = 'id' } = parseAnalyzeImageRequest(rawBody);
 
     const imageResult = await analyzeImage(imageBase64, mimeType, language);
-
-    if (!imageResult.extractedText || imageResult.extractedText.length < 10) {
-      return NextResponse.json<ApiResponse<null>>(
-        {
-          success: false,
-          error:
-            'Tidak ada teks yang dapat diekstrak dari gambar. Pastikan gambar berisi teks berita yang jelas.',
-        },
-        { status: 422 }
+    if (
+      !imageResult.extractedText ||
+      imageResult.extractedText.length < APP_CONFIG.limits.minExtractedImageTextLength
+    ) {
+      throw AppError.unprocessable(
+        'Tidak ada teks yang dapat diekstrak dari gambar. Pastikan gambar berisi teks berita yang jelas.',
+        'UNEXTRACTABLE_IMAGE_TEXT'
       );
     }
 
-    const articleTitle = imageResult.summary || imageResult.extractedText.substring(0, 100);
-    const articleContent = imageResult.extractedText;
+    const articleTitle =
+      imageResult.summary ||
+      imageResult.extractedText.substring(0, APP_CONFIG.limits.fallbackTitleMaxLength);
+    const inputValue = `[Image: ${imageResult.contentType}]${
+      imageResult.detectedSource ? ` from ${imageResult.detectedSource}` : ''
+    }`;
 
-    const claims = await extractClaims(articleTitle, articleContent, language);
-    const searchQueries = await generateSearchQueries(claims, articleTitle, language);
-    const claimTexts = claims.map((c) => c.claim);
-
-    const [factCheckResults, searchResults] = await Promise.all([
-      checkMultipleClaims(claimTexts),
-      searchMultipleQueries(searchQueries),
-    ]);
-
-    const relatedUrls = searchResults.map((r) => r.link);
-    const relatedArticles = await scrapeMultipleArticles(relatedUrls, 5);
-
-    const factCheckFormatted = formatFactCheckResults(factCheckResults);
-    const searchFormatted = formatSearchResults(searchResults);
-    const relatedFormatted =
-      relatedArticles.length > 0
-        ? relatedArticles
-            .map(
-              (a, i) =>
-                `[Scraped ${i + 1}] "${a.title}" (${a.siteName})\n${a.content.substring(0, 500)}`
-            )
-            .join('\n\n')
-        : '';
-
-    const combinedEvidence = [searchFormatted, relatedFormatted]
-      .filter(Boolean)
-      .join('\n\n---\n\n');
-
-    const investigation = await investigateCredibility(
-      articleTitle,
-      articleContent,
-      claims,
-      factCheckFormatted,
-      combinedEvidence,
-      language
-    );
-
-    const evidenceSources = buildEvidenceSources(
-      relatedArticles,
-      investigation.sourceEvaluations,
-      searchResults
-    );
-
-    const report: InvestigationReport = {
+    const report = await runInvestigationPipeline({
       inputType: 'image',
-      inputValue: `[Image: ${imageResult.contentType}]${imageResult.detectedSource ? ` from ${imageResult.detectedSource}` : ''}`,
+      inputValue,
       articleTitle,
-      articleContent: articleContent.substring(0, 2000),
-      overallVerdict: investigation.overallVerdict,
-      credibilityScore: investigation.credibilityScore,
-      confidenceLevel: investigation.confidenceLevel,
-      summary: investigation.summary,
-      claimAssessments: investigation.claimAssessments,
-      evidenceSources,
-      factCheckResults,
-      analyzedAt: new Date().toISOString(),
-      analysisTimeMs: Date.now() - startTime,
-      keyFindings: investigation.keyFindings,
-      redFlags: investigation.redFlags,
-      positiveIndicators: investigation.positiveIndicators,
-    };
+      articleContent: imageResult.extractedText,
+      language,
+      startTimeMs: startTime,
+    });
 
-    return NextResponse.json<ApiResponse<InvestigationReport>>(
-      { success: true, data: report },
-      { status: 200 }
-    );
+    return createSuccessResponse(report);
   } catch (error: unknown) {
-    console.error('Image analysis error:', error);
-    const message =
-      error instanceof Error ? error.message : 'Terjadi kesalahan yang tidak terduga.';
-
-    return NextResponse.json<ApiResponse<null>>(
-      { success: false, error: message },
-      { status: 500 }
-    );
+    return createErrorResponse(error);
   }
 }

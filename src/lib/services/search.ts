@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import { APP_CONFIG, getEnvConfig } from '@/lib/config';
 import type {
   ArticleData,
   EvidenceSource,
@@ -7,8 +8,6 @@ import type {
   SourceEvaluation,
 } from '@/lib/types';
 import { getDomain, isValidUrl } from '@/lib/utils/sanitize';
-
-const CUSTOM_SEARCH_API_URL = 'https://www.googleapis.com/customsearch/v1';
 
 interface GoogleSearchApiResponse {
   items?: Array<{
@@ -28,10 +27,10 @@ interface GoogleSearchApiResponse {
 
 async function searchYahoo(
   query: string,
-  numResults: number = 5
+  numResults: number = APP_CONFIG.limits.defaultSearchResults
 ): Promise<SearchResult[]> {
   try {
-    const response = await axios.get<string>('https://search.yahoo.com/search', {
+    const response = await axios.get<string>(APP_CONFIG.endpoints.yahooSearch, {
       params: { p: query },
       headers: {
         'User-Agent':
@@ -39,7 +38,7 @@ async function searchYahoo(
         Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
       },
-      timeout: 10000,
+      timeout: APP_CONFIG.timeouts.externalApiMs,
     });
 
     const $ = cheerio.load(response.data);
@@ -81,26 +80,28 @@ async function searchYahoo(
 
 export async function searchRelatedNews(
   query: string,
-  numResults: number = 5
+  numResults: number = APP_CONFIG.limits.defaultSearchResults
 ): Promise<SearchResult[]> {
-  const apiKey = process.env.GOOGLE_CUSTOM_SEARCH_API_KEY;
-  const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
+  const { googleCustomSearchApiKey, googleSearchEngineId } = getEnvConfig();
 
-  if (!apiKey || !searchEngineId) {
+  if (!googleCustomSearchApiKey || !googleSearchEngineId) {
     console.warn('Google Custom Search API not configured. Falling back to Yahoo search.');
     return searchYahoo(query, numResults);
   }
 
   try {
-    const response = await axios.get<GoogleSearchApiResponse>(CUSTOM_SEARCH_API_URL, {
-      params: {
-        key: apiKey,
-        cx: searchEngineId,
-        q: query,
-        num: Math.min(numResults, 10),
-      },
-      timeout: 10000,
-    });
+    const response = await axios.get<GoogleSearchApiResponse>(
+      APP_CONFIG.endpoints.googleCustomSearch,
+      {
+        params: {
+          key: googleCustomSearchApiKey,
+          cx: googleSearchEngineId,
+          q: query,
+          num: Math.min(numResults, APP_CONFIG.limits.maxGoogleSearchResults),
+        },
+        timeout: APP_CONFIG.timeouts.externalApiMs,
+      }
+    );
 
     if (!response.data.items || response.data.items.length === 0) {
       return searchYahoo(query, numResults);
@@ -121,16 +122,17 @@ export async function searchRelatedNews(
 
 export async function searchMultipleQueries(
   queries: string[],
-  resultsPerQuery: number = 3
+  resultsPerQuery: number = APP_CONFIG.limits.resultsPerSearchQuery
 ): Promise<SearchResult[]> {
   const allResults: SearchResult[] = [];
   const seenUrls = new Set<string>();
 
-  for (const query of queries.slice(0, 2)) {
+  for (const query of queries.slice(0, APP_CONFIG.limits.maxSearchQueriesToRun)) {
     try {
       if (allResults.length > 0) {
-        // Throttle consecutive requests to avoid Yahoo rate limiting.
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) =>
+          setTimeout(resolve, APP_CONFIG.timeouts.searchThrottleDelayMs)
+        );
       }
       const results = await searchRelatedNews(query, resultsPerQuery);
       for (const result of results) {
@@ -172,7 +174,9 @@ export function buildEvidenceSources(
       title: art.title,
       url: art.url,
       siteName: art.siteName || getDomain(art.url),
-      snippet: art.description || art.content.substring(0, 160),
+      snippet:
+        art.description ||
+        art.content.substring(0, APP_CONFIG.limits.evidenceSnippetLength),
       publishedDate: art.publishedDate,
       similarityScore: evaluation ? evaluation.similarityScore : 0,
       stance: evaluation ? evaluation.stance : 'neutral',

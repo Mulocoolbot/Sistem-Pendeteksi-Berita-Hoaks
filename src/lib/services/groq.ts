@@ -1,4 +1,5 @@
 import Groq from 'groq-sdk';
+import { APP_CONFIG, getEnvConfig } from '@/lib/config';
 import type {
   ClaimAssessment,
   ClaimData,
@@ -11,6 +12,7 @@ import type {
   SourceStance,
   Verdict,
 } from '@/lib/types';
+import { AppError } from '@/lib/utils/errors';
 import {
   getClaimExtractionPrompt,
   getImageAnalysisPrompt,
@@ -18,11 +20,6 @@ import {
   getSearchQueryPrompt,
 } from '@/lib/utils/prompts';
 import { isRecord, safeJsonParse } from '@/lib/utils/sanitize';
-
-const TEXT_MODEL = 'openai/gpt-oss-120b';
-const FALLBACK_TEXT_MODEL = 'openai/gpt-oss-20b';
-const VISION_MODEL = 'qwen/qwen3.8-27b';
-const FALLBACK_VISION_MODEL: string | null = null;
 
 const LANGUAGE_NAMES: Record<string, string> = {
   en: 'English',
@@ -54,13 +51,14 @@ const VALID_CONTENT_TYPES: ReadonlySet<ImageContentType> = new Set([
 ]);
 
 function getGroqClient(): Groq {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      'GROQ_API_KEY belum dikonfigurasi. Silakan daftar gratis di https://console.groq.com dan tambahkan API key ke file .env.local'
+  const { groqApiKey } = getEnvConfig();
+  if (!groqApiKey) {
+    throw AppError.internal(
+      'GROQ_API_KEY belum dikonfigurasi. Silakan daftar gratis di https://console.groq.com dan tambahkan API key ke file .env.local',
+      'MISSING_GROQ_API_KEY'
     );
   }
-  return new Groq({ apiKey });
+  return new Groq({ apiKey: groqApiKey });
 }
 
 function getLanguageName(code: string): string {
@@ -158,6 +156,7 @@ function normalizeSourceEvaluations(value: unknown): SourceEvaluation[] {
 async function chatCompletion(prompt: string, languageCode: string = 'id'): Promise<string> {
   const groq = getGroqClient();
   const langName = getLanguageName(languageCode);
+  const { textModel, fallbackTextModel, temperature, maxTokens } = APP_CONFIG.ai;
 
   const makeRequest = (modelId: string) =>
     groq.chat.completions.create({
@@ -169,22 +168,22 @@ async function chatCompletion(prompt: string, languageCode: string = 'id'): Prom
         },
         { role: 'user', content: prompt },
       ],
-      temperature: 0.3,
-      max_tokens: 4096,
+      temperature,
+      max_tokens: maxTokens,
       response_format: { type: 'json_object' },
     });
 
   try {
-    const result = await makeRequest(TEXT_MODEL);
+    const result = await makeRequest(textModel);
     return result.choices[0]?.message?.content || '';
   } catch (error: unknown) {
     if (shouldUseFallbackModel(error)) {
-      console.warn(`Primary model ${TEXT_MODEL} unavailable. Falling back to ${FALLBACK_TEXT_MODEL}...`);
+      console.warn(`Primary model ${textModel} unavailable. Falling back to ${fallbackTextModel}...`);
       try {
-        const fallbackResult = await makeRequest(FALLBACK_TEXT_MODEL);
+        const fallbackResult = await makeRequest(fallbackTextModel);
         return fallbackResult.choices[0]?.message?.content || '';
       } catch (fallbackError: unknown) {
-        console.error(`Fallback model ${FALLBACK_TEXT_MODEL} also failed:`, fallbackError);
+        console.error(`Fallback model ${fallbackTextModel} also failed:`, fallbackError);
         throw error;
       }
     }
@@ -235,6 +234,7 @@ export async function analyzeImage(
   const groq = getGroqClient();
   const prompt = getImageAnalysisPrompt();
   const langName = getLanguageName(languageCode);
+  const { visionModel, fallbackVisionModel, temperature, maxTokens } = APP_CONFIG.ai;
 
   const makeRequest = (modelId: string) =>
     groq.chat.completions.create({
@@ -257,21 +257,21 @@ export async function analyzeImage(
           ],
         },
       ],
-      temperature: 0.3,
-      max_tokens: 4096,
+      temperature,
+      max_tokens: maxTokens,
       response_format: { type: 'json_object' },
     });
 
   let result;
   try {
-    result = await makeRequest(VISION_MODEL);
+    result = await makeRequest(visionModel);
   } catch (error: unknown) {
-    if (FALLBACK_VISION_MODEL && FALLBACK_VISION_MODEL !== VISION_MODEL && shouldUseFallbackModel(error)) {
-      console.warn(`Vision model ${VISION_MODEL} unavailable. Falling back to ${FALLBACK_VISION_MODEL}...`);
+    if (fallbackVisionModel && fallbackVisionModel !== visionModel && shouldUseFallbackModel(error)) {
+      console.warn(`Vision model ${visionModel} unavailable. Falling back to ${fallbackVisionModel}...`);
       try {
-        result = await makeRequest(FALLBACK_VISION_MODEL);
+        result = await makeRequest(fallbackVisionModel);
       } catch (fallbackError: unknown) {
-        console.error(`Fallback vision model ${FALLBACK_VISION_MODEL} also failed:`, fallbackError);
+        console.error(`Fallback vision model ${fallbackVisionModel} also failed:`, fallbackError);
         throw error;
       }
     } else {
