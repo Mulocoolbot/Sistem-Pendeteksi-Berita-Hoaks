@@ -1,8 +1,7 @@
 interface EnvConfig {
   groqApiKey: string;
-  googleFactCheckApiKey: string;
-  googleCustomSearchApiKey: string;
-  googleSearchEngineId: string;
+  tavilyApiKey: string;
+  jinaApiKey: string;
 }
 
 export const HTTP_TIMEOUT_MS = 10_000;
@@ -18,9 +17,8 @@ export const ALLOWED_IMAGE_MIMES: readonly string[] = [
 export function getEnvConfig(): EnvConfig {
   return {
     groqApiKey: process.env.GROQ_API_KEY || '',
-    googleFactCheckApiKey: process.env.GOOGLE_FACT_CHECK_API_KEY || '',
-    googleCustomSearchApiKey: process.env.GOOGLE_CUSTOM_SEARCH_API_KEY || '',
-    googleSearchEngineId: process.env.GOOGLE_SEARCH_ENGINE_ID || '',
+    tavilyApiKey: process.env.TAVILY_API_KEY || '',
+    jinaApiKey: process.env.JINA_API_KEY || '',
   };
 }
 
@@ -30,16 +28,17 @@ export const APP_CONFIG = {
     fallbackTextModel: 'openai/gpt-oss-20b',
     visionModel: 'qwen/qwen3.8-27b',
     temperature: 0.3,
-    maxTokens: 4096,
+    maxTokens: 1500,
   },
   endpoints: {
-    googleFactCheck: 'https://factchecktools.googleapis.com/v1alpha1/claims:search',
-    googleCustomSearch: 'https://www.googleapis.com/customsearch/v1',
-    yahooSearch: 'https://search.yahoo.com/search',
+    tavilySearch: 'https://api.tavily.com/search',
+    jinaReader: 'https://r.jina.ai/',
+    jinaSearch: 'https://s.jina.ai/',
   },
   timeouts: {
     externalApiMs: HTTP_TIMEOUT_MS,
     directScrapeMs: 5000,
+    jinaScrapeMs: HTTP_TIMEOUT_MS,
     cacheScrapeMs: 4000,
     simpleScrapeMs: 4000,
     searchThrottleDelayMs: 1000,
@@ -49,20 +48,23 @@ export const APP_CONFIG = {
   limits: {
     maxRedirects: 5,
     minArticleContentLength: 50,
+    minCheerioContentLength: 200,
     minExtractedImageTextLength: 10,
     maxImageSizeBytes: MAX_IMAGE_SIZE_BYTES,
-    maxRelatedArticlesToScrape: 5,
+    maxRelatedArticlesToScrape: 3,
     maxSearchQueriesToRun: 2,
-    resultsPerSearchQuery: 3,
+    resultsPerSearchQuery: 5,
     defaultSearchResults: 5,
-    maxGoogleSearchResults: 10,
     reportContentPreviewLength: 2000,
-    relatedArticleExcerptLength: 1200,
+    relatedArticleExcerptLength: 700,
     evidenceSnippetLength: 160,
     fallbackTitleMaxLength: 100,
     bodyFallbackMaxLength: 5000,
-    claimPromptContentMaxLength: 4000,
-    investigationPromptContentMaxLength: 3000,
+    claimPromptContentMaxLength: 2500,
+    investigationPromptContentMaxLength: 1800,
+    maxPromptSearchResults: 6,
+    maxPromptFactChecks: 6,
+    promptSnippetMaxLength: 240,
     allowedImageMimes: ALLOWED_IMAGE_MIMES,
   },
 } as const;
