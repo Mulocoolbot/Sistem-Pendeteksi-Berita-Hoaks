@@ -109,13 +109,14 @@ Konfigurasikan `VERCEL_TOKEN`, `VERCEL_ORG_ID`, dan `VERCEL_PROJECT_ID` pada **G
 | `TAVILY_API_KEY` | Opsional (Disarankan) | Vercel Production Env / Secret | API key Tavily Search untuk pencarian berita utama dan verifikasi domain fact-checker. |
 | `JINA_API_KEY` | Opsional | Vercel Production Env / Secret | API key Jina AI untuk rate limit Jina Reader/Search fallback dan Jina Reranker v2. |
 
-### Panduan Singkat Mengaktifkan Branch Protection di `main`
+### Branch Protection Policy & Contribution Workflow
 
-1. Buka **Settings → Branches** pada repositori `Mulocoolbot/Sistem-Pendeteksi-Berita-Hoaks`, lalu klik **Add branch protection rule** (atau gunakan **Settings → Rules → Rulesets**).
-2. Isi **Branch name pattern** dengan `main`.
-3. Aktifkan **Require a pull request before merging** (disarankan minimal 1 approval dan aktifkan *Dismiss stale pull request approvals when new commits are pushed*).
-4. Aktifkan **Require status checks to pass before merging** dan **Require branches to be up to date before merging**, lalu tambahkan required check **`Quality & Blackbox Smoke Test`** (job `quality-and-smoke-test` dari workflow `CI`).
-5. Aktifkan **Do not allow bypassing the above settings** (disarankan) serta pastikan **Allow force pushes** dan **Allow deletions** tidak diaktifkan, lalu simpan (**Create / Save changes**).
+Branch `main` pada repositori `Mulocoolbot/Sistem-Pendeteksi-Berita-Hoaks` dilindungi oleh aturan proteksi aktif berikut:
+
+- **Wajib melalui Pull Request**: Tidak ada *direct push* ke `main` (berlaku juga bagi admin melalui `enforce_admins: true`). Setiap PR menggunakan templat `.github/PULL_REQUEST_TEMPLATE.md` (`required_approving_review_count: 0` untuk *solo-developer safety*, `dismiss_stale_reviews: true`, dan `required_conversation_resolution: true`).
+- **Wajib Lulus CI & Up-to-Date**: Branch sumber harus *up-to-date* terhadap `main` (`strict: true`) dan wajib lulus required status check **`Quality & Blackbox Smoke Test`** dari `.github/workflows/ci.yml`.
+- **Anti Force Push & Anti Delete**: `allow_force_pushes: false` dan `allow_deletions: false` diaktifkan untuk menjaga integritas riwayat `main`; kepemilikan kode default diatur pada `.github/CODEOWNERS` (`* @Mulocoolbot`).
+- **Alur Kontribusi Singkat**: Buat branch baru dari `main` → jalankan `npm run lint && npx tsc --noEmit` → buka Pull Request ke `main` beserta laporan Blackbox Testing (`BB-X.Y`) → merge setelah CI hijau dan seluruh diskusi terselesaikan.
 
 ## Struktur Folder
 
