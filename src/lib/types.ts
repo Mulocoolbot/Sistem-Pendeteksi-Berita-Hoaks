@@ -5,6 +5,7 @@ import type {
   AuditCritiqueSchema,
   ClaimExtractionOutputSchema,
   CredibilityTierSchema,
+  ExpandedQueriesSchema,
   ExtractedClaimItemSchema,
   FinalSynthesisOutputSchema,
   ImageAnalysisOutputSchema,
@@ -14,6 +15,7 @@ import type {
   ProviderStatusSchema,
   RerankerMethodSchema,
   UrlAnalyzeInputSchema,
+  VerificationDepthSchema,
   VerdictSchema,
 } from '@/lib/schemas/analysis';
 
@@ -68,6 +70,17 @@ export type AuditCritique = z.infer<typeof AuditCritiqueSchema>;
 export type RerankerMethod = z.infer<typeof RerankerMethodSchema>;
 
 export type AiAuditMetadata = z.infer<typeof AiAuditMetadataSchema>;
+
+export type ExpandedQueriesOutput = z.infer<typeof ExpandedQueriesSchema>;
+
+export type VerificationDepth = z.infer<typeof VerificationDepthSchema>;
+
+export type SearchDepth = 'basic' | 'advanced';
+
+export interface SearchOptions {
+  depth?: SearchDepth;
+  maxResults?: number;
+}
 
 export type AiTaskType = 'extract' | 'reason' | 'audit' | 'vision';
 
@@ -181,6 +194,7 @@ export interface InvestigationReport {
   cached: boolean;
   providerStatus: ProviderStatus;
   aiAudit: AiAuditMetadata;
+  verificationDepth: VerificationDepth;
 
   keyFindings: string[];
   redFlags: string[];

@@ -34,6 +34,7 @@ export default function ResultCard({ report, language }: ResultCardProps) {
   const evidenceSources = report.evidenceSources ?? [];
   const signals = report.signals;
   const aiAudit = report.aiAudit;
+  const verificationDepth = report.verificationDepth;
   const providerStatus = report.providerStatus;
 
   const getLocalizedVerdict = (verdict: string) => {
@@ -390,6 +391,22 @@ export default function ResultCard({ report, language }: ResultCardProps) {
                     {aiAudit.selfCritiqueAdjusted ? t.auditAdjustedYes : t.auditAdjustedNo}
                   </dd>
                 </div>
+                {verificationDepth && (
+                  <div className={styles.auditItem}>
+                    <dt className={styles.auditTerm}>{t.auditVerificationDepth}</dt>
+                    <dd className={styles.auditValue}>
+                      {verificationDepth.deepSearchTriggered
+                        ? `${t.auditDepthDeep} (${verificationDepth.passes}x)`
+                        : `${t.auditDepthStandard} (${verificationDepth.passes}x)`}
+                    </dd>
+                  </div>
+                )}
+                {verificationDepth?.deepSearchTriggered && (
+                  <div className={styles.auditItem}>
+                    <dt className={styles.auditTerm}>{t.auditFullArticlesRead}</dt>
+                    <dd className={styles.auditValue}>{verificationDepth.fullArticlesRead}</dd>
+                  </div>
+                )}
               </dl>
               {aiAudit.auditNote && (
                 <div className={styles.auditNoteBox}>

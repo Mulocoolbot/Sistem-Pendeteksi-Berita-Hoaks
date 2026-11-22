@@ -3,10 +3,14 @@ import { APP_CONFIG, getEnvConfig } from '@/lib/config';
 import type {
   ArticleData,
   EvidenceSource,
+  SearchDepth,
+  SearchOptions,
   SearchProvider,
   SearchResult,
   SourceEvaluation,
 } from '@/lib/types';
+
+export type { SearchDepth, SearchOptions };
 import { classifyDomain } from '@/lib/utils/credibility';
 import { getDomain, isValidUrl } from '@/lib/utils/sanitize';
 
@@ -56,25 +60,51 @@ function describeError(error: unknown): string {
   return 'unknown error';
 }
 
+function resolveSearchOptions(
+  numResultsOrOptions?: number | SearchOptions,
+  fallbackMaxResults: number = APP_CONFIG.limits.defaultSearchResults
+): { depth: SearchDepth; maxResults: number } {
+  if (typeof numResultsOrOptions === 'number') {
+    return {
+      depth: 'basic',
+      maxResults: numResultsOrOptions,
+    };
+  }
+
+  const depth: SearchDepth = numResultsOrOptions?.depth ?? 'basic';
+  const defaultForDepth =
+    depth === 'advanced' ? APP_CONFIG.limits.advancedSearchResults : fallbackMaxResults;
+
+  return {
+    depth,
+    maxResults: numResultsOrOptions?.maxResults ?? defaultForDepth,
+  };
+}
+
 async function searchWithTavily(
   query: string,
-  numResults: number,
+  options: { depth: SearchDepth; maxResults: number },
   apiKey: string
 ): Promise<SearchResult[]> {
+  const timeoutMs =
+    options.depth === 'advanced'
+      ? Math.max(APP_CONFIG.timeouts.externalApiMs, 15_000)
+      : APP_CONFIG.timeouts.externalApiMs;
+
   const response = await axios.post<TavilySearchApiResponse>(
     APP_CONFIG.endpoints.tavilySearch,
     {
       api_key: apiKey,
       query,
-      search_depth: 'basic',
-      max_results: numResults,
+      search_depth: options.depth,
+      max_results: options.maxResults,
     },
     {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
-      timeout: APP_CONFIG.timeouts.externalApiMs,
+      timeout: timeoutMs,
     }
   );
 
@@ -84,7 +114,7 @@ async function searchWithTavily(
     .filter((item): item is typeof item & { url: string } =>
       Boolean(item.url && isValidUrl(item.url))
     )
-    .slice(0, numResults)
+    .slice(0, options.maxResults)
     .map((item) => ({
       title: item.title?.trim() || getDomain(item.url),
       url: item.url,
@@ -138,8 +168,9 @@ async function searchWithJina(
 
 export async function searchWithProvider(
   query: string,
-  numResults: number = APP_CONFIG.limits.defaultSearchResults
+  optionsOrMaxResults: number | SearchOptions = APP_CONFIG.limits.defaultSearchResults
 ): Promise<SearchProviderExecutionResult> {
+  const resolved = resolveSearchOptions(optionsOrMaxResults);
   const { tavilyApiKey, jinaApiKey } = getEnvConfig();
   const warnings: string[] = [];
   const trimmedTavilyKey = tavilyApiKey.trim();
@@ -147,7 +178,7 @@ export async function searchWithProvider(
 
   if (trimmedTavilyKey) {
     try {
-      const results = await searchWithTavily(query, numResults, trimmedTavilyKey);
+      const results = await searchWithTavily(query, resolved, trimmedTavilyKey);
       return {
         results,
         provider: 'tavily',
@@ -163,7 +194,7 @@ export async function searchWithProvider(
   }
 
   try {
-    const results = await searchWithJina(query, numResults, trimmedJinaKey);
+    const results = await searchWithJina(query, resolved.maxResults, trimmedJinaKey);
     return {
       results,
       provider: 'jina_search',
@@ -184,19 +215,23 @@ export async function searchWithProvider(
 
 export async function searchRelatedNews(
   query: string,
-  numResults: number = APP_CONFIG.limits.defaultSearchResults
+  optionsOrMaxResults: number | SearchOptions = APP_CONFIG.limits.defaultSearchResults
 ): Promise<SearchResult[]> {
-  const execution = await searchWithProvider(query, numResults);
+  const execution = await searchWithProvider(query, optionsOrMaxResults);
   return execution.results;
 }
 
 export async function searchMultipleQueries(
   queries: string[],
-  resultsPerQuery: number = APP_CONFIG.limits.resultsPerSearchQuery
+  optionsOrMaxResults: number | SearchOptions = APP_CONFIG.limits.resultsPerSearchQuery
 ): Promise<SearchResult[]> {
+  const resolved = resolveSearchOptions(
+    optionsOrMaxResults,
+    APP_CONFIG.limits.resultsPerSearchQuery
+  );
   const limitedQueries = queries.slice(0, APP_CONFIG.limits.maxSearchQueriesToRun);
   const outcomes = await Promise.allSettled(
-    limitedQueries.map((query) => searchRelatedNews(query, resultsPerQuery))
+    limitedQueries.map((query) => searchRelatedNews(query, resolved))
   );
 
   const allResults: SearchResult[] = [];

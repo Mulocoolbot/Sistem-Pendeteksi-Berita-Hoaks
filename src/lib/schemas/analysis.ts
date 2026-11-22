@@ -111,3 +111,13 @@ export const AiAuditMetadataSchema = z.object({
   selfCritiqueAdjusted: z.boolean(),
   auditNote: z.string().min(1),
 });
+
+export const ExpandedQueriesSchema = z.object({
+  queries: z.array(z.string().trim().min(2)).min(2).max(3),
+});
+
+export const VerificationDepthSchema = z.object({
+  passes: z.union([z.literal(1), z.literal(2)]),
+  deepSearchTriggered: z.boolean(),
+  fullArticlesRead: z.number().int().min(0),
+});
