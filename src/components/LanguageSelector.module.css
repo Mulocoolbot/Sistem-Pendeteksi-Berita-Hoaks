@@ -36,11 +36,15 @@
   letter-spacing: 0.08em;
   color: var(--text-muted);
   cursor: pointer;
-  transition: color var(--transition-fast);
+  transition: color var(--transition-fast), transform var(--transition-fast);
 }
 
 .toggleButton:hover {
   color: var(--text-primary);
+}
+
+.toggleButton:active {
+  transform: scale(0.98);
 }
 
 .toggleButton:focus-visible {

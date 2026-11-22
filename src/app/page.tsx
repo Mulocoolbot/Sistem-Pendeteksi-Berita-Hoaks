@@ -49,7 +49,9 @@ export default function HomePage() {
           )}
 
           <div ref={resultRef}>
-            {report && <ResultCard report={report} language={language} />}
+            {report && (
+              <ResultCard key={report.analyzedAt} report={report} language={language} />
+            )}
           </div>
         </section>
       </main>

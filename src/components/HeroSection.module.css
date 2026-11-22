@@ -9,7 +9,7 @@
   grid-template-areas: 'left center right';
   align-items: center;
   gap: 1rem;
-  padding-bottom: 1rem;
+  padding-bottom: 1.15rem;
 }
 
 .zoneLeft {
@@ -56,8 +56,8 @@
 .brandMark {
   flex-shrink: 0;
   display: block;
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   object-fit: contain;
 }
 
@@ -71,72 +71,12 @@
   margin: 0;
 }
 
-.titleSub {
-  margin-top: 0.35rem;
-  font-family: var(--font-sans), sans-serif;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
 .zoneRight {
   grid-area: right;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.1rem;
   min-width: 0;
-}
-
-.editionLabel {
-  font-family: var(--font-sans), sans-serif;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  text-align: right;
-}
-
-.deckBand {
-  border-top: 1px solid var(--border-hairline);
-  padding: 1rem 0 1.15rem;
-  text-align: center;
-}
-
-.subtitle {
-  font-family: var(--font-serif), Georgia, serif;
-  font-size: clamp(0.95rem, 1.5vw, 1.0625rem);
-  color: var(--text-body);
-  max-width: 65ch;
-  margin: 0 auto 0.85rem;
-  line-height: 1.55;
-}
-
-.features {
-  list-style: none;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.35rem 0;
-}
-
-.feature {
-  font-family: var(--font-sans), sans-serif;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  padding: 0 0.85rem;
-  border-right: 1px solid var(--border-hairline);
-}
-
-.feature:last-child {
-  border-right: none;
 }
 
 .doubleRule {
@@ -158,20 +98,11 @@
       'left right'
       'center center';
     row-gap: 0.75rem;
-    padding-bottom: 0.85rem;
-  }
-
-  .editionLabel {
-    display: none;
+    padding-bottom: 0.9rem;
   }
 
   .brandMark {
     width: 36px;
     height: 36px;
-  }
-
-  .feature {
-    padding: 0 0.55rem;
-    font-size: 0.625rem;
   }
 }
