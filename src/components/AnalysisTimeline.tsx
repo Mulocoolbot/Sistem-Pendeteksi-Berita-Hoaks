@@ -23,58 +23,6 @@ const STEPS: TimelineStepId[] = [
 
 type StepState = 'pending' | 'active' | 'complete' | 'error';
 
-function getStepLineClass(state: StepState): string {
-  switch (state) {
-    case 'complete':
-      return styles.stepLineComplete;
-    case 'active':
-      return styles.stepLineActive;
-    case 'error':
-      return styles.stepLineError;
-    default:
-      return '';
-  }
-}
-
-function getStepIconClass(state: StepState): string {
-  switch (state) {
-    case 'complete':
-      return styles.stepComplete;
-    case 'active':
-      return styles.stepActive;
-    case 'error':
-      return styles.stepError;
-    default:
-      return styles.stepPending;
-  }
-}
-
-function getStepLabelClass(state: StepState): string {
-  if (state === 'pending') return styles.stepLabelPending;
-  if (state === 'active') return styles.stepLabelActive;
-  return '';
-}
-
-function renderStepIndicator(state: StepState, index: number) {
-  if (state === 'active') {
-    return (
-      <svg className={styles.spinnerSvg} viewBox="0 0 50 50">
-        <circle
-          className={styles.spinnerPath}
-          cx="25"
-          cy="25"
-          r="20"
-          fill="none"
-          strokeWidth="5"
-        />
-      </svg>
-    );
-  }
-  if (state === 'complete') return 'OK';
-  if (state === 'error') return '!';
-  return index + 1;
-}
-
 export default function AnalysisTimeline({ currentStep, language }: AnalysisTimelineProps) {
   const t = TRANSLATIONS[language];
 
@@ -97,7 +45,7 @@ export default function AnalysisTimeline({ currentStep, language }: AnalysisTime
     return Math.min(((activeIndex + 1) / STEPS.length) * 100, 95);
   }, [currentStep, activeIndex]);
 
-  const getStepState = (index: number): 'pending' | 'active' | 'complete' | 'error' => {
+  const getStepState = (index: number): StepState => {
     if (currentStep === 'error' && index === activeIndex) return 'error';
     if (currentStep === 'complete' || index < activeIndex) return 'complete';
     if (index === activeIndex) return 'active';
@@ -121,6 +69,19 @@ export default function AnalysisTimeline({ currentStep, language }: AnalysisTime
     }
   };
 
+  const getStatusMeta = (state: StepState) => {
+    switch (state) {
+      case 'complete':
+        return { label: `[${t.statusDone}]`, className: styles.statusDone };
+      case 'active':
+        return { label: `[${t.statusActive}]`, className: styles.statusActive };
+      case 'error':
+        return { label: `[${t.statusFailed}]`, className: styles.statusError };
+      default:
+        return { label: `[${t.statusQueued}]`, className: styles.statusQueued };
+    }
+  };
+
   const roundedProgress = Math.round(progressPercent);
 
   return (
@@ -130,55 +91,64 @@ export default function AnalysisTimeline({ currentStep, language }: AnalysisTime
       aria-live="polite"
       aria-busy={currentStep !== 'complete' && currentStep !== 'error'}
     >
-      <h2 id="timeline-title" className={styles.timelineTitle}>
-        {t.timelineTitle}
-      </h2>
+      <div className={styles.header}>
+        <div>
+          <span className={styles.kicker}>{t.dispatchKicker}</span>
+          <h2 id="timeline-title" className={styles.timelineTitle}>
+            {t.timelineTitle}
+          </h2>
+        </div>
+        <div className={styles.progressCounter}>
+          {currentStep === 'error' ? t.error : `${roundedProgress}% ${t.complete.toUpperCase()}`}
+        </div>
+      </div>
+
+      <div
+        className={styles.progressBar}
+        role="progressbar"
+        aria-label={t.timelineTitle}
+        aria-valuenow={roundedProgress}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div className={styles.progressFill} style={{ width: `${progressPercent}%` }} />
+      </div>
 
       <ol className={styles.steps}>
         {STEPS.map((stepId, index) => {
           const state = getStepState(index);
           const { label, description } = getStepDetails(stepId);
-          const lineClass = getStepLineClass(state);
-          const iconClass = getStepIconClass(state);
-          const labelClass = getStepLabelClass(state);
+          const status = getStatusMeta(state);
+          const stepNumber = String(index + 1).padStart(2, '0');
 
           return (
             <li
               key={stepId}
-              className={`${styles.step} ${lineClass}`}
+              className={`${styles.step} ${state === 'active' ? styles.stepRowActive : ''}`}
               aria-current={state === 'active' ? 'step' : undefined}
             >
-              <div className={`${styles.stepIcon} ${iconClass}`} aria-hidden="true">
-                {renderStepIndicator(state, index)}
-              </div>
+              <span className={styles.stepIndex} aria-hidden="true">
+                {stepNumber}
+              </span>
               <div className={styles.stepContent}>
-                <div className={`${styles.stepLabel} ${labelClass}`}>{label}</div>
+                <div
+                  className={`${styles.stepLabel} ${
+                    state === 'pending' ? styles.stepLabelPending : ''
+                  }`}
+                >
+                  {label}
+                </div>
                 {state === 'active' && (
-                  <div className={styles.stepDescription}>{description}</div>
+                  <p className={styles.stepDescription}>{description}</p>
                 )}
               </div>
+              <span className={`${styles.stepStatus} ${status.className}`}>
+                {status.label}
+              </span>
             </li>
           );
         })}
       </ol>
-
-      <div className={styles.progressWrapper}>
-        <div
-          className={styles.progressBar}
-          role="progressbar"
-          aria-label={t.timelineTitle}
-          aria-valuenow={roundedProgress}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <div className={styles.progressFill} style={{ width: `${progressPercent}%` }} />
-        </div>
-        <div className={styles.progressText}>
-          {currentStep === 'error'
-            ? t.error
-            : `${roundedProgress}% ${t.complete.toLowerCase()}`}
-        </div>
-      </div>
     </section>
   );
 }

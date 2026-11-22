@@ -10,29 +10,12 @@ interface EvidenceListProps {
   language: LanguageCode;
 }
 
-function getSimilarityColor(score: number): string {
-  if (score > 70) return 'var(--status-verified)';
-  if (score > 40) return 'var(--status-misleading)';
-  return 'var(--accent-link)';
-}
-
 export default function EvidenceList({ report, language }: EvidenceListProps) {
   const t = TRANSLATIONS[language];
   const evidenceSources = report.evidenceSources ?? [];
   const factCheckResults = report.factCheckResults ?? [];
 
-  const getStanceClass = (stance: string) => {
-    switch (stance.toLowerCase()) {
-      case 'supports':
-        return styles.stanceSupports;
-      case 'contradicts':
-        return styles.stanceContradicts;
-      default:
-        return styles.stanceNeutral;
-    }
-  };
-
-  const getBadgeClass = (stance: string) => {
+  const getStanceBadgeClass = (stance: string) => {
     switch (stance.toLowerCase()) {
       case 'supports':
         return styles.badgeSupports;
@@ -46,11 +29,24 @@ export default function EvidenceList({ report, language }: EvidenceListProps) {
   const getCredibilityBadgeClass = (tier?: CredibilityTier) => {
     switch (tier) {
       case 'TIER_1':
-        return styles.badgeSupports;
+        return styles.badgeTier1;
       case 'TIER_2':
-        return styles.reviewRating;
+        return styles.badgeTier2;
       default:
-        return styles.badgeNeutral;
+        return styles.badgeTier3;
+    }
+  };
+
+  const getTierLabel = (tier?: CredibilityTier, fallbackLabel?: string) => {
+    switch (tier) {
+      case 'TIER_1':
+        return t.tier_1_label;
+      case 'TIER_2':
+        return t.tier_2_label;
+      case 'TIER_3':
+        return t.tier_3_label;
+      default:
+        return fallbackLabel || '';
     }
   };
 
@@ -66,115 +62,117 @@ export default function EvidenceList({ report, language }: EvidenceListProps) {
   };
 
   return (
-    <>
+    <div className={styles.evidenceWrapper}>
       {factCheckResults.length > 0 && (
-        <section className={styles.factCheckSection} aria-labelledby="factcheck-title">
-          <h3 id="factcheck-title" className={styles.sectionTitle}>
+        <section className={styles.sectionBlock} aria-labelledby="factcheck-title">
+          <h3 id="factcheck-title" className={styles.kickerHeading}>
             {t.officialFactCheck}
           </h3>
-          {factCheckResults.map((fc, i) => (
-            <article key={i} className={styles.factCheckCard}>
-              <div className={styles.factCheckClaim}>
-                &ldquo;{fc.text}&rdquo;
-                {fc.claimant && (
-                  <span className={styles.factCheckClaimant}> — {fc.claimant}</span>
-                )}
-              </div>
-              {fc.reviews.map((review, j) => (
-                <div key={j} className={styles.factCheckReview}>
-                  <span className={styles.reviewRating}>{review.rating}</span>
-                  <span>
-                    {language === 'id' ? 'oleh' : 'by'} {review.publisher}
-                  </span>
-                  {review.credibilityLabel && (
-                    <span
-                      className={`${styles.stanceBadge} ${getCredibilityBadgeClass(
-                        review.credibilityTier
-                      )}`}
-                    >
-                      {review.credibilityLabel}
+          <div className={styles.listStack}>
+            {factCheckResults.map((fc, i) => (
+              <article key={i} className={styles.factCheckItem}>
+                <p className={styles.factCheckClaim}>
+                  &ldquo;{fc.text}&rdquo;
+                  {fc.claimant && (
+                    <span className={styles.factCheckClaimant}> — {fc.claimant}</span>
+                  )}
+                </p>
+                {fc.reviews.map((review, j) => (
+                  <div key={j} className={styles.factCheckReview}>
+                    <span className={styles.reviewRating}>{review.rating}</span>
+                    <span className={styles.reviewPublisher}>
+                      {t.reviewedBy} {review.publisher}
                     </span>
-                  )}
-                  {review.url && (
-                    <a
-                      href={review.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.reviewLink}
-                    >
-                      {language === 'id' ? 'Baca selengkapnya' : 'Read more'}
-                    </a>
-                  )}
-                </div>
-              ))}
-            </article>
-          ))}
-        </section>
-      )}
-
-      <section className={styles.evidenceSection} aria-labelledby="evidence-title">
-        <h3 id="evidence-title" className={styles.sectionTitle}>
-          {t.foundSources} ({evidenceSources.length})
-        </h3>
-
-        {evidenceSources.length > 0 ? (
-          <div className={styles.evidenceGrid}>
-            {evidenceSources.map((source, i) => (
-              <article key={i}>
-                <a
-                  href={source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.evidenceCard}
-                >
-                  <div className={`${styles.stanceIndicator} ${getStanceClass(source.stance)}`} />
-                  <div className={styles.evidenceContent}>
-                    <div className={styles.evidenceHeader}>
-                      <div className={styles.evidenceTitle}>{source.title}</div>
-                      <span className={`${styles.stanceBadge} ${getBadgeClass(source.stance)}`}>
-                        {getStanceLabel(source.stance)}
+                    {(review.credibilityTier || review.credibilityLabel) && (
+                      <span
+                        className={`${styles.metaBadge} ${getCredibilityBadgeClass(
+                          review.credibilityTier
+                        )}`}
+                      >
+                        {getTierLabel(review.credibilityTier, review.credibilityLabel)}
                       </span>
-                    </div>
-                    <div className={styles.evidenceMeta}>
-                      <span className={styles.evidenceSite}>
-                        {source.siteName || getDomain(source.url)}
-                      </span>
-                      {source.credibilityLabel && (
-                        <span
-                          className={`${styles.stanceBadge} ${getCredibilityBadgeClass(
-                            source.credibilityTier
-                          )}`}
-                        >
-                          {source.credibilityLabel}
-                        </span>
-                      )}
-                      {source.publishedDate && <span>{source.publishedDate}</span>}
-                    </div>
-                    <div className={styles.evidenceSnippet}>{source.snippet}</div>
-                    {source.similarityScore > 0 && (
-                      <div className={styles.similarityBar}>
-                        <span>{t.similarity}:</span>
-                        <div className={styles.similarityTrack}>
-                          <div
-                            className={styles.similarityFill}
-                            style={{
-                              width: `${source.similarityScore}%`,
-                              backgroundColor: getSimilarityColor(source.similarityScore),
-                            }}
-                          />
-                        </div>
-                        <span>{source.similarityScore}%</span>
-                      </div>
+                    )}
+                    {review.url && (
+                      <a
+                        href={review.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.externalLink}
+                      >
+                        {t.readFullSource}
+                      </a>
                     )}
                   </div>
-                </a>
+                ))}
               </article>
             ))}
           </div>
+        </section>
+      )}
+
+      <section className={styles.sectionBlock} aria-labelledby="evidence-title">
+        <div className={styles.sectionHeaderRow}>
+          <h3 id="evidence-title" className={styles.kickerHeading}>
+            {t.foundSources}
+          </h3>
+          <span className={styles.countMeta}>({evidenceSources.length})</span>
+        </div>
+
+        {evidenceSources.length > 0 ? (
+          <ol className={styles.evidenceList}>
+            {evidenceSources.map((source, i) => {
+              const domainLabel = source.siteName || getDomain(source.url);
+              const tierLabel = getTierLabel(source.credibilityTier, source.credibilityLabel);
+
+              return (
+                <li key={`${source.url}-${i}`} className={styles.evidenceItem}>
+                  <div className={styles.badgeRow}>
+                    <span className={`${styles.metaBadge} ${getStanceBadgeClass(source.stance)}`}>
+                      {getStanceLabel(source.stance)}
+                    </span>
+                    <span
+                      className={`${styles.metaBadge} ${getCredibilityBadgeClass(
+                        source.credibilityTier
+                      )}`}
+                    >
+                      {tierLabel}
+                    </span>
+                  </div>
+
+                  <h4 className={styles.evidenceTitle}>
+                    <a
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.externalLink}
+                    >
+                      {source.title}
+                    </a>
+                  </h4>
+
+                  <div className={styles.evidenceMeta}>
+                    <span className={styles.evidenceSite}>{domainLabel}</span>
+                    {source.publishedDate && (
+                      <span className={styles.evidenceDate}>{source.publishedDate}</span>
+                    )}
+                    {source.similarityScore > 0 && (
+                      <span className={styles.similarityScore}>
+                        {t.similarity}: {source.similarityScore}%
+                      </span>
+                    )}
+                  </div>
+
+                  {source.snippet && (
+                    <p className={styles.evidenceSnippet}>{source.snippet}</p>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
         ) : (
           <div className={styles.emptyState}>{t.noSources}</div>
         )}
       </section>
-    </>
+    </div>
   );
 }

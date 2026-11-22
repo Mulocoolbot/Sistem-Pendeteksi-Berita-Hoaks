@@ -1,4 +1,4 @@
-export type LanguageCode = 'en' | 'id' | 'zh' | 'ja' | 'es' | 'hi' | 'fr' | 'pt';
+export type LanguageCode = 'en' | 'id';
 
 interface Language {
   code: LanguageCode;
@@ -6,14 +6,22 @@ interface Language {
 }
 
 interface TranslationDictionary {
+  deskLabel: string;
+  editionLabel: string;
+  langNavLabel: string;
   badge: string;
   titleMain: string;
   titleSub: string;
   subtitle: string;
+  featuresLabel: string;
   featureUrl: string;
   featureImg: string;
   featureLang: string;
   featureEngine: string;
+
+  deskKicker: string;
+  maxSizeBadge: string;
+  tabListLabel: string;
   tabUrl: string;
   tabImg: string;
   urlPlaceholder: string;
@@ -21,6 +29,14 @@ interface TranslationDictionary {
   dragSubtext: string;
   btnInvestigate: string;
   btnInvestigating: string;
+  removeImage: string;
+  errEmptyUrl: string;
+  errEmptyImg: string;
+  errInvalidImgType: string;
+  errMaxImgSize: string;
+  errGeneric: string;
+
+  dispatchKicker: string;
   timelineTitle: string;
   step_extracting: string;
   step_extracting_desc: string;
@@ -34,8 +50,14 @@ interface TranslationDictionary {
   step_comparing_desc: string;
   step_report: string;
   step_report_desc: string;
+  statusDone: string;
+  statusActive: string;
+  statusQueued: string;
+  statusFailed: string;
   complete: string;
   error: string;
+
+  reportKicker: string;
   credibilityScore: string;
   confidence: string;
   claimsAnalyzed: string;
@@ -44,10 +66,35 @@ interface TranslationDictionary {
   redFlags: string;
   positiveIndicators: string;
   claimsAssessment: string;
+  claimLabel: string;
   journalisticSignals: string;
   signalClickbait: string;
   signalTemporal: string;
   signalAttribution: string;
+  severity_low: string;
+  severity_medium: string;
+  severity_high: string;
+  temporal_current: string;
+  temporal_outdated: string;
+  temporal_undated: string;
+  temporal_unclear: string;
+  attr_clear: string;
+  attr_partial: string;
+  attr_missing: string;
+  tier_1_label: string;
+  tier_2_label: string;
+  tier_3_label: string;
+  aiAuditTitle: string;
+  auditModel: string;
+  auditReranker: string;
+  auditSelfCritique: string;
+  auditAdjustedYes: string;
+  auditAdjustedNo: string;
+  auditNoteLabel: string;
+  providerWarningsTitle: string;
+  providerSearchLabel: string;
+  providerScraperLabel: string;
+  providerFactcheckLabel: string;
   searchQueryLabel: string;
   supportingUrlsLabel: string;
   cachedResult: string;
@@ -60,6 +107,7 @@ interface TranslationDictionary {
   confidence_low: string;
   confidence_medium: string;
   confidence_high: string;
+
   officialFactCheck: string;
   foundSources: string;
   stance_supports: string;
@@ -67,595 +115,253 @@ interface TranslationDictionary {
   stance_neutral: string;
   similarity: string;
   noSources: string;
+  reviewedBy: string;
+  readFullSource: string;
+
   disclaimer: string;
   poweredBy: string;
 }
 
 export const LANGUAGES: Language[] = [
-  { code: 'id', name: 'Bahasa Indonesia' },
   { code: 'en', name: 'English' },
-  { code: 'zh', name: '中文' },
-  { code: 'ja', name: '日本語' },
-  { code: 'es', name: 'Español' },
-  { code: 'hi', name: 'हिन्दी' },
-  { code: 'fr', name: 'Français' },
-  { code: 'pt', name: 'Português' },
+  { code: 'id', name: 'Bahasa Indonesia' },
 ];
 
 export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
-  id: {
-    badge: 'AI-Powered Fact Checker',
-    titleMain: 'Deteksi Berita Hoaks',
-    titleSub: 'dalam Hitungan Detik',
-    subtitle:
-      'Masukkan URL berita atau upload gambar berita yang mencurigakan. Sistem AI kami akan menganalisis, mencari sumber terpercaya, dan memberikan investigasi mendalam tentang keaslian berita tersebut.',
-    featureUrl: 'Analisis URL',
-    featureImg: 'Deteksi Gambar',
-    featureLang: 'Multi-Bahasa',
-    featureEngine: 'Groq AI',
-
-    tabUrl: 'URL Berita',
-    tabImg: 'Gambar Berita',
-    urlPlaceholder: 'Masukkan URL berita... (contoh: https://example.com/berita)',
-    dragText: 'Seret & lepas gambar di sini, atau klik untuk memilih',
-    dragSubtext: 'Mendukung PNG, JPG, JPEG (Max 4MB)',
-    btnInvestigate: 'Investigasi Sekarang',
-    btnInvestigating: 'Menganalisis...',
-
-    timelineTitle: 'Investigasi Sedang Berlangsung...',
-    step_extracting: 'Mengekstrak Konten',
-    step_extracting_desc: 'Membaca dan mengekstrak elemen dari input...',
-    step_analyzing: 'Menganalisis Klaim',
-    step_analyzing_desc: 'AI mengidentifikasi klaim-klaim utama...',
-    step_searching: 'Mencari Berita Serupa',
-    step_searching_desc: 'Melacak sumber berita dari internet...',
-    step_factcheck: 'Memeriksa Fact-Check',
-    step_factcheck_desc: 'Mengecek database fact-check resmi...',
-    step_comparing: 'Membandingkan Sumber',
-    step_comparing_desc: 'Membandingkan dengan sumber terpercaya...',
-    step_report: 'Menyusun Laporan',
-    step_report_desc: 'Membuat laporan investigasi final...',
-    complete: 'Selesai',
-    error: 'Terjadi Kesalahan',
-
-    credibilityScore: 'Skor Kredibilitas',
-    confidence: 'Keyakinan',
-    claimsAnalyzed: 'Klaim dianalisis',
-    sourcesFound: 'Sumber ditemukan',
-    summary: 'Ringkasan Investigasi',
-    redFlags: 'Indikator Mencurigakan (Red Flags)',
-    positiveIndicators: 'Indikator Positif',
-    claimsAssessment: 'Penilaian Per Klaim',
-    journalisticSignals: 'Sinyal Jurnalistik',
-    signalClickbait: 'Indikasi Clickbait',
-    signalTemporal: 'Konteks Waktu',
-    signalAttribution: 'Atribusi Sumber',
-    searchQueryLabel: 'Kueri Pencarian',
-    supportingUrlsLabel: 'Rujukan Klaim',
-    cachedResult: 'Hasil Cache',
-    analyzedAt: 'Dianalisis',
-    analysisTime: 'Waktu analisis',
-    verdict_hoax: 'HOAKS',
-    verdict_fakta: 'TERVERIFIKASI',
-    verdict_neutral: 'MENYESATKAN / CAMPURAN',
-    verdict_unverified: 'BELUM TERVERIFIKASI',
-    confidence_low: 'RENDAH',
-    confidence_medium: 'SEDANG',
-    confidence_high: 'TINGGI',
-
-    officialFactCheck: 'Hasil Fact-Check Resmi',
-    foundSources: 'Sumber Berita yang Ditemukan',
-    stance_supports: 'Mendukung',
-    stance_contradicts: 'Kontradiksi',
-    stance_neutral: 'Netral',
-    similarity: 'Kemiripan',
-    noSources: 'Tidak ada sumber berita terkait yang ditemukan dari pencarian internet.',
-
-    disclaimer:
-      'Sistem ini menggunakan AI dan tidak 100% akurat. Selalu verifikasi informasi dari sumber terpercaya.',
-    poweredBy: 'Powered by Groq AI (Llama) • Google Fact Check API • Google Custom Search',
-  },
   en: {
-    badge: 'AI-Powered Fact Checker',
-    titleMain: 'Detect Fake News',
-    titleSub: 'in Seconds',
+    deskLabel: 'Verification Desk',
+    editionLabel: 'Independent Digital Edition',
+    langNavLabel: 'Edition language',
+    badge: 'Independent Verification Desk',
+    titleMain: 'Fact Check',
+    titleSub: 'News & Claim Verification Desk',
     subtitle:
-      'Enter a news URL or upload an image of a suspicious news item. Our AI system will analyze it, search for trusted sources, and provide a deep investigation of its authenticity.',
-    featureUrl: 'URL Analysis',
-    featureImg: 'Image Detection',
-    featureLang: 'Multi-Language',
-    featureEngine: 'Groq AI',
+      'Submit a published article URL or news screenshot. Our editorial verification engine extracts atomic claims, cross-examines primary sources, and audits journalistic integrity.',
+    featuresLabel: 'Editorial capabilities',
+    featureUrl: 'Article URL Verification',
+    featureImg: 'Screenshot OCR Analysis',
+    featureLang: 'Bilingual Desk (EN / ID)',
+    featureEngine: 'Multi-Claim Audit',
 
-    tabUrl: 'News URL',
-    tabImg: 'News Image',
-    urlPlaceholder: 'Enter news URL... (e.g., https://example.com/news)',
-    dragText: 'Drag & drop image here, or click to select',
-    dragSubtext: 'Supports PNG, JPG, JPEG (Max 4MB)',
-    btnInvestigate: 'Investigate Now',
-    btnInvestigating: 'Analyzing...',
+    deskKicker: 'SUBMIT FOR VERIFICATION',
+    maxSizeBadge: 'MAX 5MB',
+    tabListLabel: 'Submission format',
+    tabUrl: 'Article URL',
+    tabImg: 'Screenshot Image',
+    urlPlaceholder: 'https://www.example.com/2026/news-article-slug',
+    dragText: 'Drop a news screenshot here, or click to select file',
+    dragSubtext: 'Accepted formats: PNG, JPG, JPEG, WebP — Maximum size 5MB',
+    btnInvestigate: 'Run Verification',
+    btnInvestigating: 'Verifying Claims...',
+    removeImage: 'Remove',
+    errEmptyUrl: 'Please enter an article URL to verify.',
+    errEmptyImg: 'Please select a screenshot image to verify.',
+    errInvalidImgType: 'File must be an image (PNG, JPEG, or WebP).',
+    errMaxImgSize: 'Image exceeds the 5MB maximum file size limit.',
+    errGeneric: 'Verification could not be completed.',
 
-    timelineTitle: 'Investigation in Progress...',
-    step_extracting: 'Extracting Content',
-    step_extracting_desc: 'Reading and extracting elements from input...',
-    step_analyzing: 'Analyzing Claims',
-    step_analyzing_desc: 'AI is identifying key claims...',
-    step_searching: 'Searching Similar News',
-    step_searching_desc: 'Tracking news sources across the web...',
-    step_factcheck: 'Checking Fact-Checks',
-    step_factcheck_desc: 'Querying official fact-check databases...',
-    step_comparing: 'Comparing Sources',
-    step_comparing_desc: 'Comparing with trusted sources...',
-    step_report: 'Generating Report',
-    step_report_desc: 'Compiling the final investigation report...',
+    dispatchKicker: 'VERIFICATION DISPATCH LOG',
+    timelineTitle: 'Editorial Verification in Progress',
+    step_extracting: 'Extracting Source Material',
+    step_extracting_desc: 'Parsing headline, publication metadata, and body copy from input...',
+    step_analyzing: 'Isolating Atomic Claims',
+    step_analyzing_desc: 'Decomposing narrative assertions into independently testable claims...',
+    step_searching: 'Cross-Checking News Indices',
+    step_searching_desc: 'Querying live web coverage and corroborating reporting across outlets...',
+    step_factcheck: 'Inspecting Fact-Check Archives',
+    step_factcheck_desc: 'Checking prior fact-check records and independent verification bureaus...',
+    step_comparing: 'Scoring Evidence & Stance',
+    step_comparing_desc: 'Weighting source credibility tiers and alignment against each claim...',
+    step_report: 'Compiling Editorial Report',
+    step_report_desc: 'Finalizing verdict, journalistic signals, and AI self-critique audit...',
+    statusDone: 'DONE',
+    statusActive: 'ACTIVE',
+    statusQueued: 'QUEUED',
+    statusFailed: 'FAILED',
     complete: 'Complete',
-    error: 'An Error Occurred',
+    error: 'Verification Interrupted',
 
+    reportKicker: 'VERIFICATION REPORT',
     credibilityScore: 'Credibility Score',
     confidence: 'Confidence',
-    claimsAnalyzed: 'Claims analyzed',
-    sourcesFound: 'Sources found',
-    summary: 'Investigation Summary',
-    redFlags: 'Red Flags (Suspicious Indicators)',
-    positiveIndicators: 'Positive Indicators',
-    claimsAssessment: 'Claim Assessments',
+    claimsAnalyzed: 'Claims Examined',
+    sourcesFound: 'Corroborating Sources',
+    summary: 'Executive Summary',
+    redFlags: 'Editorial Red Flags',
+    positiveIndicators: 'Corroborated Indicators',
+    claimsAssessment: 'Atomic Claim Breakdown',
+    claimLabel: 'CLAIM',
     journalisticSignals: 'Journalistic Signals',
-    signalClickbait: 'Clickbait Signal',
+    signalClickbait: 'Headline & Clickbait',
     signalTemporal: 'Temporal Context',
     signalAttribution: 'Source Attribution',
-    searchQueryLabel: 'Search Query',
-    supportingUrlsLabel: 'Supporting URLs',
-    cachedResult: 'Cached Result',
-    analyzedAt: 'Analyzed on',
-    analysisTime: 'Analysis time',
-    verdict_hoax: 'FAKE / HOAX',
+    severity_low: 'LOW',
+    severity_medium: 'MEDIUM',
+    severity_high: 'HIGH',
+    temporal_current: 'CURRENT',
+    temporal_outdated: 'OUTDATED / RECYCLED',
+    temporal_undated: 'UNDATED',
+    temporal_unclear: 'UNCLEAR',
+    attr_clear: 'CLEAR',
+    attr_partial: 'PARTIAL',
+    attr_missing: 'ANONYMOUS / MISSING',
+    tier_1_label: 'Tier 1 · Primary & Wire',
+    tier_2_label: 'Tier 2 · Mainstream Press',
+    tier_3_label: 'Tier 3 · General Web',
+    aiAuditTitle: 'AI Verification Audit',
+    auditModel: 'Synthesis Model',
+    auditReranker: 'Evidence Reranker',
+    auditSelfCritique: 'Self-Critique Adjustment',
+    auditAdjustedYes: 'Adjusted',
+    auditAdjustedNo: 'Verified Pass',
+    auditNoteLabel: 'Auditor Note',
+    providerWarningsTitle: 'Retrieval & Provider Notices',
+    providerSearchLabel: 'Search',
+    providerScraperLabel: 'Extractor',
+    providerFactcheckLabel: 'Fact-Check',
+    searchQueryLabel: 'Verification Query',
+    supportingUrlsLabel: 'Primary Reference',
+    cachedResult: 'Archived Dispatch',
+    analyzedAt: 'Published',
+    analysisTime: 'Duration',
+    verdict_hoax: 'FALSE / HOAX',
     verdict_fakta: 'VERIFIED',
-    verdict_neutral: 'MISLEADING / MIXED',
+    verdict_neutral: 'MISLEADING',
     verdict_unverified: 'UNVERIFIED',
     confidence_low: 'LOW',
     confidence_medium: 'MEDIUM',
     confidence_high: 'HIGH',
 
-    officialFactCheck: 'Official Fact-Check Results',
-    foundSources: 'Found News Sources',
-    stance_supports: 'Supports',
-    stance_contradicts: 'Contradicts',
-    stance_neutral: 'Neutral',
-    similarity: 'Similarity',
-    noSources: 'No related news sources found from web search.',
+    officialFactCheck: 'Fact-Check Archive Matches',
+    foundSources: 'Evidence & Source Index',
+    stance_supports: 'CORROBORATES',
+    stance_contradicts: 'CONTRADICTS',
+    stance_neutral: 'NEUTRAL',
+    similarity: 'Relevance',
+    noSources: 'No external corroborating sources were returned from search indices.',
+    reviewedBy: 'Reviewed by',
+    readFullSource: 'Inspect Source',
 
     disclaimer:
-      'This system uses AI and is not 100% accurate. Always verify information from trusted sources.',
-    poweredBy: 'Powered by Groq AI (Llama) • Google Fact Check API • Google Custom Search',
+      'Fact Check is an automated editorial verification desk. Automated assessments should be read alongside primary cited evidence.',
+    poweredBy: 'Fact Check Verification Desk • Multi-Claim Evidence Synthesis & Journalistic Audit',
   },
-  zh: {
-    badge: 'AI 驱动事实核查',
-    titleMain: '秒级检测',
-    titleSub: '虚假新闻与谣言',
+  id: {
+    deskLabel: 'Meja Verifikasi',
+    editionLabel: 'Edisi Digital Independen',
+    langNavLabel: 'Bahasa edisi',
+    badge: 'Meja Verifikasi Independen',
+    titleMain: 'Fact Check',
+    titleSub: 'Meja Verifikasi Berita & Klaim',
     subtitle:
-      '输入新闻网址或上传可疑新闻图片。我们的 AI 系统将对其进行分析、搜索可信来源，并对真实性进行深度调查。',
-    featureUrl: '网址分析',
-    featureImg: '图片检测',
-    featureLang: '多语言支持',
-    featureEngine: 'Groq AI',
+      'Masukkan URL artikel berita atau tangkapan layar. Mesin verifikasi editorial kami mengekstrak klaim atomik, memeriksa silang sumber primer, dan mengaudit integritas jurnalistik.',
+    featuresLabel: 'Kapabilitas editorial',
+    featureUrl: 'Verifikasi URL Artikel',
+    featureImg: 'Analisis OCR Tangkapan Layar',
+    featureLang: 'Meja Dwibahasa (EN / ID)',
+    featureEngine: 'Audit Multi-Klaim',
 
-    tabUrl: '新闻网址',
-    tabImg: '新闻图片',
-    urlPlaceholder: '输入新闻网址... (例如: https://example.com/news)',
-    dragText: '拖拽图片至此，或点击选择',
-    dragSubtext: '支持 PNG, JPG, JPEG (最大 4MB)',
-    btnInvestigate: '立即调查',
-    btnInvestigating: '分析中...',
+    deskKicker: 'PENGAJUAN VERIFIKASI',
+    maxSizeBadge: 'MAKS 5MB',
+    tabListLabel: 'Format pengajuan',
+    tabUrl: 'URL Artikel',
+    tabImg: 'Tangkapan Layar',
+    urlPlaceholder: 'https://www.contoh.com/2026/judul-artikel-berita',
+    dragText: 'Seret tangkapan layar berita ke sini, atau klik untuk memilih file',
+    dragSubtext: 'Format didukung: PNG, JPG, JPEG, WebP — Ukuran maksimum 5MB',
+    btnInvestigate: 'Mulai Verifikasi',
+    btnInvestigating: 'Memverifikasi Klaim...',
+    removeImage: 'Hapus',
+    errEmptyUrl: 'Masukkan URL artikel terlebih dahulu.',
+    errEmptyImg: 'Pilih gambar tangkapan layar terlebih dahulu.',
+    errInvalidImgType: 'File harus berupa gambar (PNG, JPEG, atau WebP).',
+    errMaxImgSize: 'Ukuran gambar melebihi batas maksimum 5MB.',
+    errGeneric: 'Verifikasi gagal diselesaikan.',
 
-    timelineTitle: '调查正在进行中...',
-    step_extracting: '提取内容',
-    step_extracting_desc: '正在读取并提取输入中的元素...',
-    step_analyzing: '分析声称',
-    step_analyzing_desc: 'AI 正在识别主要声称...',
-    step_searching: '搜索相似新闻',
-    step_searching_desc: '正在网络上追踪新闻来源...',
-    step_factcheck: '核对事实核查',
-    step_factcheck_desc: '正在查询官方事实核查数据库...',
-    step_comparing: '比对数据源',
-    step_comparing_desc: '正在与受信任的来源进行比较...',
-    step_report: '生成报告',
-    step_report_desc: '正在编制最终调查报告...',
-    complete: '已完成',
-    error: '发生错误',
+    dispatchKicker: 'LOG PROSES VERIFIKASI',
+    timelineTitle: 'Verifikasi Editorial Sedang Berlangsung',
+    step_extracting: 'Mengekstrak Materi Sumber',
+    step_extracting_desc: 'Membaca judul, metadata publikasi, dan isi teks dari masukan...',
+    step_analyzing: 'Memilah Klaim Atomik',
+    step_analyzing_desc: 'Mengurai narasi berita menjadi klaim-klaim yang dapat diuji terpisah...',
+    step_searching: 'Melacak Indeks Berita',
+    step_searching_desc: 'Menelusuri pemberitaan lintas media dan sumber pembanding langsung...',
+    step_factcheck: 'Memeriksa Arsip Periksa Fakta',
+    step_factcheck_desc: 'Mencocokkan catatan periksa fakta resmi dari lembaga independen...',
+    step_comparing: 'Menilai Bobot & Sikap Bukti',
+    step_comparing_desc: 'Menimbang tingkat kredibilitas sumber terhadap setiap klaim...',
+    step_report: 'Menyusun Laporan Editorial',
+    step_report_desc: 'Menetapkan vonis akhir, sinyal jurnalistik, dan audit mandiri AI...',
+    statusDone: 'SELESAI',
+    statusActive: 'PROSES',
+    statusQueued: 'ANTRE',
+    statusFailed: 'GAGAL',
+    complete: 'Selesai',
+    error: 'Verifikasi Terhenti',
 
-    credibilityScore: '可信度评分',
-    confidence: '置信度',
-    claimsAnalyzed: '已分析声称数',
-    sourcesFound: '已找到来源数',
-    summary: '调查摘要',
-    redFlags: '疑点指标 (红旗)',
-    positiveIndicators: '可信指标',
-    claimsAssessment: '每项声称评估',
-    journalisticSignals: '新闻信号指标',
-    signalClickbait: '标题党检测',
-    signalTemporal: '时间上下文',
-    signalAttribution: '来源归属',
-    searchQueryLabel: '检索词',
-    supportingUrlsLabel: '佐证链接',
-    cachedResult: '缓存结果',
-    analyzedAt: '分析时间',
-    analysisTime: '分析耗时',
-    verdict_hoax: '谣言 / 虚假',
-    verdict_fakta: '已证实 / 事实',
-    verdict_neutral: '误导 / 混合',
-    verdict_unverified: '未证实',
-    confidence_low: '低',
-    confidence_medium: '中',
-    confidence_high: '高',
+    reportKicker: 'LAPORAN VERIFIKASI',
+    credibilityScore: 'Skor Kredibilitas',
+    confidence: 'Tingkat Keyakinan',
+    claimsAnalyzed: 'Klaim Diperiksa',
+    sourcesFound: 'Sumber Pembanding',
+    summary: 'Ringkasan Eksekutif',
+    redFlags: 'Indikator Mencurigakan',
+    positiveIndicators: 'Indikator Terkonfirmasi',
+    claimsAssessment: 'Rincian Klaim Atomik',
+    claimLabel: 'KLAIM',
+    journalisticSignals: 'Sinyal Jurnalistik',
+    signalClickbait: 'Judul & Clickbait',
+    signalTemporal: 'Konteks Waktu',
+    signalAttribution: 'Atribusi Sumber',
+    severity_low: 'RENDAH',
+    severity_medium: 'SEDANG',
+    severity_high: 'TINGGI',
+    temporal_current: 'TERKINI',
+    temporal_outdated: 'KEDALUWARSA / DAUR ULANG',
+    temporal_undated: 'TANPA TANGGAL',
+    temporal_unclear: 'TIDAK JELAS',
+    attr_clear: 'JELAS',
+    attr_partial: 'SEBAGIAN',
+    attr_missing: 'ANONIM / HILANG',
+    tier_1_label: 'Tier 1 · Resmi & Primer',
+    tier_2_label: 'Tier 2 · Media Arus Utama',
+    tier_3_label: 'Tier 3 · Sumber Umum',
+    aiAuditTitle: 'Audit Verifikasi AI',
+    auditModel: 'Model Sintesis',
+    auditReranker: 'Perangking Bukti',
+    auditSelfCritique: 'Koreksi Audit Mandiri',
+    auditAdjustedYes: 'Disesuaikan',
+    auditAdjustedNo: 'Lolos Tanpa Revisi',
+    auditNoteLabel: 'Catatan Auditor',
+    providerWarningsTitle: 'Catatan Sistem & Penyedia',
+    providerSearchLabel: 'Pencarian',
+    providerScraperLabel: 'Ekstraktor',
+    providerFactcheckLabel: 'Periksa Fakta',
+    searchQueryLabel: 'Kueri Verifikasi',
+    supportingUrlsLabel: 'Rujukan Pendukung',
+    cachedResult: 'Arsip Tersimpan',
+    analyzedAt: 'Diterbitkan',
+    analysisTime: 'Durasi',
+    verdict_hoax: 'SALAH / HOAKS',
+    verdict_fakta: 'TERVERIFIKASI',
+    verdict_neutral: 'MENYESATKAN',
+    verdict_unverified: 'BELUM TERVERIFIKASI',
+    confidence_low: 'RENDAH',
+    confidence_medium: 'SEDANG',
+    confidence_high: 'TINGGI',
 
-    officialFactCheck: '官方事实核查结果',
-    foundSources: '找到的新闻来源',
-    stance_supports: '支持',
-    stance_contradicts: '反驳',
-    stance_neutral: '中立',
-    similarity: '相似度',
-    noSources: '未从网络搜索中找到相关新闻来源。',
-
-    disclaimer: '本系统使用人工智能，并非 100% 准确。请始终从可信来源核实信息。',
-    poweredBy: '由 Groq AI (Llama) • Google 事实核查 API • Google 自定义搜索提供技术支持',
-  },
-  ja: {
-    badge: 'AIファクトチェッカー',
-    titleMain: '偽ニュースを瞬時に',
-    titleSub: '検知・分析する',
-    subtitle:
-      '不審なニュースのURLを入力するか、画像をアップロードしてください。AIシステムが内容を分析し、信頼できるソースを検索して真偽を徹底的に調査します。',
-    featureUrl: 'URL分析',
-    featureImg: '画像検知',
-    featureLang: '多言語対応',
-    featureEngine: 'Groq AI',
-
-    tabUrl: 'ニュースURL',
-    tabImg: 'ニュース画像',
-    urlPlaceholder: 'URLを入力してください... (例: https://example.com/news)',
-    dragText: '画像をここにドラッグ＆ドロップ、またはクリックして選択',
-    dragSubtext: 'PNG, JPG, JPEG 対応 (最大 4MB)',
-    btnInvestigate: '調査を開始',
-    btnInvestigating: '分析中...',
-
-    timelineTitle: '調査が進行中...',
-    step_extracting: 'コンテンツの抽出',
-    step_extracting_desc: '入力された情報から要素を抽出中...',
-    step_analyzing: '主張の分析',
-    step_analyzing_desc: 'AIが主な主張を識別中...',
-    step_searching: '類似ニュースの検索',
-    step_searching_desc: 'インターネット上の情報源を追跡中...',
-    step_factcheck: 'ファクトチェック確認',
-    step_factcheck_desc: '公式ファクトチェックデータベースを検索中...',
-    step_comparing: '情報源の比較',
-    step_comparing_desc: '信頼できる情報源と比較中...',
-    step_report: 'レポートの作成',
-    step_report_desc: '最終調査報告書を作成中...',
-    complete: '完了',
-    error: 'エラーが発生しました',
-
-    credibilityScore: '信頼性スコア',
-    confidence: '確信度',
-    claimsAnalyzed: '分析された主張',
-    sourcesFound: '検出された情報源',
-    summary: '調査サマリー',
-    redFlags: '不審な兆候 (レッドフラグ)',
-    positiveIndicators: '肯定的な指標',
-    claimsAssessment: '主張ごとの評価',
-    journalisticSignals: 'ジャーナリズム指標',
-    signalClickbait: '釣り見出し判定',
-    signalTemporal: '時間的文脈',
-    signalAttribution: '情報源の明記',
-    searchQueryLabel: '検索クエリ',
-    supportingUrlsLabel: '関連URL',
-    cachedResult: 'キャッシュ結果',
-    analyzedAt: '分析日時',
-    analysisTime: '分析時間',
-    verdict_hoax: '偽情報 / デマ',
-    verdict_fakta: '検証済み / 事実',
-    verdict_neutral: '誤解を招く / 混合',
-    verdict_unverified: '未検証',
-    confidence_low: '低',
-    confidence_medium: '中',
-    confidence_high: '高',
-
-    officialFactCheck: '公式ファクトチェック結果',
-    foundSources: '見つかったニュースソース',
-    stance_supports: '支持',
-    stance_contradicts: '矛盾',
-    stance_neutral: '中立',
-    similarity: '類似度',
-    noSources: 'ウェブ検索から関連するニュースソースが見つかりませんでした。',
+    officialFactCheck: 'Arsip Periksa Fakta Resmi',
+    foundSources: 'Indeks Bukti & Sumber',
+    stance_supports: 'MENDUKUNG',
+    stance_contradicts: 'MEMBANTAH',
+    stance_neutral: 'NETRAL',
+    similarity: 'Relevansi',
+    noSources: 'Tidak ditemukan sumber pembanding eksternal dari indeks pencarian.',
+    reviewedBy: 'Diperiksa oleh',
+    readFullSource: 'Buka Sumber',
 
     disclaimer:
-      '本システムはAIを使用しており、100%正確ではありません。常に信頼できる情報源で事実を確認してください。',
-    poweredBy: 'Powered by Groq AI (Llama) • Google Fact Check API • Google Custom Search',
-  },
-  es: {
-    badge: 'Verificador de Hechos con IA',
-    titleMain: 'Detecta Noticias Falsas',
-    titleSub: 'en Segundos',
-    subtitle:
-      'Introduce la URL de una noticia o sube una imagen sospechosa. Nuestro sistema de IA la analizará, buscará fuentes confiables y proporcionará una investigación profunda de su autenticidad.',
-    featureUrl: 'Análisis de URL',
-    featureImg: 'Detección de Imagen',
-    featureLang: 'Multilenguaje',
-    featureEngine: 'Groq AI',
-
-    tabUrl: 'URL de Noticia',
-    tabImg: 'Imagen de Noticia',
-    urlPlaceholder: 'Introduce URL de noticia... (ej. https://example.com/noticia)',
-    dragText: 'Arrastra y suelta la imagen aquí, o haz clic para seleccionar',
-    dragSubtext: 'Soporta PNG, JPG, JPEG (Máx 4MB)',
-    btnInvestigate: 'Investigar Ahora',
-    btnInvestigating: 'Analizando...',
-
-    timelineTitle: 'Investigación en Curso...',
-    step_extracting: 'Extrayendo Contenido',
-    step_extracting_desc: 'Leyendo y extrayendo elementos de la entrada...',
-    step_analyzing: 'Analizando Afirmaciones',
-    step_analyzing_desc: 'La IA está identificando las afirmaciones clave...',
-    step_searching: 'Buscando Noticias Similares',
-    step_searching_desc: 'Rastreando fuentes de noticias en la web...',
-    step_factcheck: 'Verificando Fact-Checks',
-    step_factcheck_desc: 'Consultando bases de datos de verificación oficiales...',
-    step_comparing: 'Comparando Fuentes',
-    step_comparing_desc: 'Comparando con fuentes de confianza...',
-    step_report: 'Generando Informe',
-    step_report_desc: 'Compilando el informe final de investigación...',
-    complete: 'Completado',
-    error: 'Ocurrió un Error',
-
-    credibilityScore: 'Puntuación de Credibilidad',
-    confidence: 'Confianza',
-    claimsAnalyzed: 'Afirmaciones analizadas',
-    sourcesFound: 'Fuentes encontradas',
-    summary: 'Resumen de la Investigación',
-    redFlags: 'Señales de Alerta (Indicadores Sospechosos)',
-    positiveIndicators: 'Indicadores Positivos',
-    claimsAssessment: 'Evaluación de Afirmaciones',
-    journalisticSignals: 'Señales Periodísticas',
-    signalClickbait: 'Detección de Clickbait',
-    signalTemporal: 'Contexto Temporal',
-    signalAttribution: 'Atribución de Fuentes',
-    searchQueryLabel: 'Consulta de Búsqueda',
-    supportingUrlsLabel: 'URLs de Respaldo',
-    cachedResult: 'Resultado en Caché',
-    analyzedAt: 'Analizado el',
-    analysisTime: 'Tiempo de análisis',
-    verdict_hoax: 'FALSO / HOAX',
-    verdict_fakta: 'VERIFICADO',
-    verdict_neutral: 'ENGAÑOSO / MIXTO',
-    verdict_unverified: 'NO VERIFICADO',
-    confidence_low: 'BAJA',
-    confidence_medium: 'MEDIA',
-    confidence_high: 'ALTA',
-
-    officialFactCheck: 'Resultados Oficiales de Fact-Check',
-    foundSources: 'Fuentes de Noticias Encontradas',
-    stance_supports: 'Apoya',
-    stance_contradicts: 'Contradice',
-    stance_neutral: 'Neutral',
-    similarity: 'Similitud',
-    noSources: 'No se encontraron fuentes de noticias relacionadas en la búsqueda web.',
-
-    disclaimer:
-      'Este sistema utiliza IA y no es 100% preciso. Siempre verifique la información en fuentes confiables.',
-    poweredBy: 'Desarrollado por Groq AI (Llama) • Google Fact Check API • Google Custom Search',
-  },
-  hi: {
-    badge: 'एआई-संचालित तथ्य जाँचकर्ता',
-    titleMain: 'फेक न्यूज़ का पता लगाएं',
-    titleSub: 'चंद सेकंड में',
-    subtitle:
-      'एक समाचार URL दर्ज करें या किसी संदिग्ध समाचार की छवि अपलोड करें। हमारा एआई सिस्टम इसका विश्लेषण करेगा, विश्वसनीय स्रोतों की खोज करेगा, और इसकी प्रामाणिकता की गहरी जांच प्रदान करेगा।',
-    featureUrl: 'URL विश्लेषण',
-    featureImg: 'छवि का पता लगाना',
-    featureLang: 'बहुभाषी सहायता',
-    featureEngine: 'Groq AI',
-
-    tabUrl: 'समाचार URL',
-    tabImg: 'समाचार छवि',
-    urlPlaceholder: 'समाचार URL दर्ज करें... (जैसे, https://example.com/news)',
-    dragText: 'छवि यहाँ खींचें और छोड़ें, या चुनने के लिए क्लिक करें',
-    dragSubtext: 'PNG, JPG, JPEG का समर्थन करता है (अधिकतम 4MB)',
-    btnInvestigate: 'अभी जाँच करें',
-    btnInvestigating: 'विश्लेषण किया जा रहा है...',
-
-    timelineTitle: 'जाँच चल रही है...',
-    step_extracting: 'सामग्री निकालना',
-    step_extracting_desc: 'इनपुट से तत्वों को पढ़ा और निकाला जा रहा है...',
-    step_analyzing: 'दावों का विश्लेषण',
-    step_analyzing_desc: 'एआई प्रमुख दावों की पहचान कर रहा है...',
-    step_searching: 'समान समाचार खोजना',
-    step_searching_desc: 'वेब पर समाचार स्रोतों को ट्रैक किया जा रहा है...',
-    step_factcheck: 'तथ्य-जांच सत्यापित करना',
-    step_factcheck_desc: 'आधिकारिक तथ्य-जांच डेटाबेस में खोज की जा रही है...',
-    step_comparing: 'स्रोतों की तुलना',
-    step_comparing_desc: 'विश्वसनीय स्रोतों के साथ तुलना की जा रही है...',
-    step_report: 'रिपोर्ट तैयार करना',
-    step_report_desc: 'अंतिम जाँच रिपोर्ट तैयार की जा रही है...',
-    complete: 'पूर्ण',
-    error: 'त्रुटि हुई',
-
-    credibilityScore: 'विश्वसनीयता स्कोर',
-    confidence: 'आत्मविश्वास स्तर',
-    claimsAnalyzed: 'विश्लेषित दावे',
-    sourcesFound: 'प्राप्त स्रोत',
-    summary: 'जाँच सारांश',
-    redFlags: 'संदिग्ध संकेत (रेड फ्लैग)',
-    positiveIndicators: 'सकारात्मक संकेतक',
-    claimsAssessment: 'दावे का आकलन',
-    journalisticSignals: 'पत्रकारिता संकेत',
-    signalClickbait: 'क्लिकबेट संकेत',
-    signalTemporal: 'समय संदर्भ',
-    signalAttribution: 'स्रोत श्रेय',
-    searchQueryLabel: 'खोज क्वेरी',
-    supportingUrlsLabel: 'सहायक लिंक',
-    cachedResult: 'कैश्ड परिणाम',
-    analyzedAt: 'विश्लेषण तिथि',
-    analysisTime: 'विश्लेषण समय',
-    verdict_hoax: 'झूठ / अफवाह',
-    verdict_fakta: 'सत्यापित / तथ्य',
-    verdict_neutral: 'भ्रामक / मिश्रित',
-    verdict_unverified: 'अपुष्ट',
-    confidence_low: 'कम',
-    confidence_medium: 'मध्यम',
-    confidence_high: 'उच्च',
-
-    officialFactCheck: 'आधिकारिक तथ्य-जांच परिणाम',
-    foundSources: 'पाए गए समाचार स्रोत',
-    stance_supports: 'समर्थन करता है',
-    stance_contradicts: 'खंडन करता है',
-    stance_neutral: 'तटस्थ',
-    similarity: 'समानता',
-    noSources: 'वेब खोज से कोई संबंधित समाचार स्रोत नहीं मिला।',
-
-    disclaimer:
-      'यह प्रणाली एआई का उपयोग करती है और 100% सटीक नहीं है। हमेशा विश्वसनीय स्रोतों से जानकारी सत्यापित करें।',
-    poweredBy: 'Groq AI (Llama) • Google Fact Check API • Google Custom Search द्वारा संचालित',
-  },
-  fr: {
-    badge: 'Vérificateur de Faits par IA',
-    titleMain: 'Détectez les Fake News',
-    titleSub: 'en Quelques Secondes',
-    subtitle:
-      "Entrez l'URL d'un article ou téléchargez l'image d'une information suspecte. Notre IA l'analysera, recherchera des sources fiables et fournira une enquête approfondie sur son authenticité.",
-    featureUrl: "Analyse d'URL",
-    featureImg: "Détection d'Image",
-    featureLang: 'Multi-Langue',
-    featureEngine: 'Groq AI',
-
-    tabUrl: "URL de l'Article",
-    tabImg: "Image de l'Article",
-    urlPlaceholder: "Entrez l'URL... (ex. https://example.com/news)",
-    dragText: "Glissez-déposez l'image ici, ou cliquez pour sélectionner",
-    dragSubtext: 'Formats supportés : PNG, JPG, JPEG (Max 4 Mo)',
-    btnInvestigate: 'Enquêter Maintenant',
-    btnInvestigating: 'Analyse en cours...',
-
-    timelineTitle: 'Enquête en Cours...',
-    step_extracting: 'Extraction du Contenu',
-    step_extracting_desc: "Lecture et extraction des éléments de l'entrée...",
-    step_analyzing: 'Analyse des Déclarations',
-    step_analyzing_desc: "L'IA identifie les affirmations clés...",
-    step_searching: "Recherche d'Articles Similaires",
-    step_searching_desc: "Recherche de sources d'information sur le web...",
-    step_factcheck: 'Vérification des Fact-Checks',
-    step_factcheck_desc: 'Consultation des bases de vérification officielles...',
-    step_comparing: 'Comparaison des Sources',
-    step_comparing_desc: 'Comparaison avec des sources de confiance...',
-    step_report: 'Génération du Rapport',
-    step_report_desc: "Compilation du rapport d'enquête final...",
-    complete: 'Terminé',
-    error: 'Une Erreur est Survenue',
-
-    credibilityScore: 'Score de Crédibilité',
-    confidence: 'Niveau de Confiance',
-    claimsAnalyzed: 'Affirmations analysées',
-    sourcesFound: 'Sources trouvées',
-    summary: "Résumé de l'Enquête",
-    redFlags: 'Drapeaux Rouges (Indicateurs Suspects)',
-    positiveIndicators: 'Indicateurs Positifs',
-    claimsAssessment: 'Évaluation des Affirmations',
-    journalisticSignals: 'Signaux Journalistiques',
-    signalClickbait: 'Indicateur Clickbait',
-    signalTemporal: 'Contexte Temporel',
-    signalAttribution: 'Attribution des Sources',
-    searchQueryLabel: 'Requête de Recherche',
-    supportingUrlsLabel: 'URLs de Référence',
-    cachedResult: 'Résultat en Cache',
-    analyzedAt: 'Analysé le',
-    analysisTime: "Temps d'analyse",
-    verdict_hoax: 'FAUX / HOAX',
-    verdict_fakta: 'VÉRIFIÉ',
-    verdict_neutral: 'TROMPEUR / MIXTE',
-    verdict_unverified: 'NON VÉRIFIÉ',
-    confidence_low: 'FAIBLE',
-    confidence_medium: 'MOYEN',
-    confidence_high: 'ÉLEVÉ',
-
-    officialFactCheck: 'Résultats Officiels de Fact-Check',
-    foundSources: "Sources d'Information Trouvées",
-    stance_supports: 'Soutient',
-    stance_contradicts: 'Contredit',
-    stance_neutral: 'Neutre',
-    similarity: 'Similitude',
-    noSources: "Aucune source d'information correspondante trouvée sur le web.",
-
-    disclaimer:
-      "Ce système utilise l'IA et n'est pas fiable à 100%. Vérifiez toujours les informations auprès de sources de confiance.",
-    poweredBy: 'Propulsé par Groq AI (Llama) • Google Fact Check API • Google Custom Search',
-  },
-  pt: {
-    badge: 'Verificador de Fatos com IA',
-    titleMain: 'Detete Notícias Falsas',
-    titleSub: 'em Segundos',
-    subtitle:
-      'Insira o URL de uma notícia ou carregue uma imagem suspeita. O nosso sistema de IA irá analisá-la, pesquisar fontes confiáveis e fornecer uma investigação profunda sobre a sua autenticidade.',
-    featureUrl: 'Análise de URL',
-    featureImg: 'Deteção de Imagem',
-    featureLang: 'Multi-Idioma',
-    featureEngine: 'Groq AI',
-
-    tabUrl: 'URL da Notícia',
-    tabImg: 'Imagem da Notícia',
-    urlPlaceholder: 'Insira o URL... (ex. https://example.com/noticia)',
-    dragText: 'Arraste e solte a imagem aqui, ou clique para selecionar',
-    dragSubtext: 'Suporta PNG, JPG, JPEG (Máx 4MB)',
-    btnInvestigate: 'Investigar Agora',
-    btnInvestigating: 'A analisar...',
-
-    timelineTitle: 'Investigação em Curso...',
-    step_extracting: 'A Extrair Conteúdo',
-    step_extracting_desc: 'A ler e a extrair elementos da entrada...',
-    step_analyzing: 'A Analisar Alegações',
-    step_analyzing_desc: 'A IA está a identificar as principais alegações...',
-    step_searching: 'Procura de Notícias Semelhantes',
-    step_searching_desc: 'A rastrear fontes de notícias na web...',
-    step_factcheck: 'Verificação de Fact-Checks',
-    step_factcheck_desc: 'A consultar bases de dados de verificação oficiais...',
-    step_comparing: 'Comparação de Fontes',
-    step_comparing_desc: 'A comparar com fontes de confiança...',
-    step_report: 'Geração do Relatório',
-    step_report_desc: 'A compilar o relatório final da investigação...',
-    complete: 'Concluído',
-    error: 'Ocorreu um Erro',
-
-    credibilityScore: 'Pontuação de Credibilidade',
-    confidence: 'Confiança',
-    claimsAnalyzed: 'Alegações analisadas',
-    sourcesFound: 'Fontes encontradas',
-    summary: 'Resumo da Investigação',
-    redFlags: 'Sinais de Alerta (Indicadores Suspeitos)',
-    positiveIndicators: 'Indicadores Positivos',
-    claimsAssessment: 'Avaliação de Alegações',
-    journalisticSignals: 'Sinais Jornalísticos',
-    signalClickbait: 'Sinal de Clickbait',
-    signalTemporal: 'Contexto Temporal',
-    signalAttribution: 'Atribuição de Fontes',
-    searchQueryLabel: 'Consulta de Pesquisa',
-    supportingUrlsLabel: 'URLs de Apoio',
-    cachedResult: 'Resultado em Cache',
-    analyzedAt: 'Analisado em',
-    analysisTime: 'Tempo de análise',
-    verdict_hoax: 'FALSO / HOAX',
-    verdict_fakta: 'VERIFICADO',
-    verdict_neutral: 'ENGANOSO / MISTO',
-    verdict_unverified: 'NÃO VERIFICADO',
-    confidence_low: 'BAIXA',
-    confidence_medium: 'MÉDIA',
-    confidence_high: 'ALTA',
-
-    officialFactCheck: 'Resultados Oficiais de Fact-Check',
-    foundSources: 'Fontes de Notícias Encontradas',
-    stance_supports: 'Apoia',
-    stance_contradicts: 'Contradiz',
-    stance_neutral: 'Neutro',
-    similarity: 'Semelhança',
-    noSources: 'Nenhuma fonte de notícias relacionada foi encontrada na pesquisa web.',
-
-    disclaimer:
-      'Este sistema utiliza IA e não é 100% preciso. Verifique sempre as informações em fontes de confiança.',
-    poweredBy: 'Desenvolvido por Groq AI (Llama) • Google Fact Check API • Google Custom Search',
+      'Fact Check adalah meja verifikasi editorial otomatis. Penilaian otomatis harus dibaca bersama bukti primer yang dirujuk.',
+    poweredBy: 'Meja Verifikasi Fact Check • Sintesis Bukti Multi-Klaim & Audit Jurnalistik',
   },
 };

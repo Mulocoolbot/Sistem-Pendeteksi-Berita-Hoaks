@@ -1,8 +1,9 @@
 'use client';
 
+import EvidenceList from '@/components/EvidenceList';
 import styles from './ResultCard.module.css';
 import type { InvestigationReport } from '@/lib/types';
-import { getScoreColor, formatDate } from '@/lib/utils/sanitize';
+import { formatDate } from '@/lib/utils/sanitize';
 import { TRANSLATIONS, type LanguageCode } from '@/lib/utils/translations';
 
 interface ResultCardProps {
@@ -12,7 +13,6 @@ interface ResultCardProps {
 
 export default function ResultCard({ report, language }: ResultCardProps) {
   const t = TRANSLATIONS[language];
-  const scoreColor = getScoreColor(report.credibilityScore);
   const overallVerdict = report.verdict ?? report.overallVerdict;
   const confidenceScore = report.confidenceScore ?? report.credibilityScore;
   const claims = report.claims ?? [];
@@ -21,11 +21,8 @@ export default function ResultCard({ report, language }: ResultCardProps) {
   const positiveIndicators = report.positiveIndicators ?? [];
   const evidenceSources = report.evidenceSources ?? [];
   const signals = report.signals;
-
-  const radius = 68;
-  const circumference = 2 * Math.PI * radius;
-  const progress = (report.credibilityScore / 100) * circumference;
-  const dashOffset = circumference - progress;
+  const aiAudit = report.aiAudit;
+  const providerStatus = report.providerStatus;
 
   const getLocalizedVerdict = (verdict: string) => {
     const normalized = verdict.toUpperCase();
@@ -36,14 +33,14 @@ export default function ResultCard({ report, language }: ResultCardProps) {
       normalized.includes('FAKE') ||
       normalized.includes('FALSE')
     ) {
-      return { label: t.verdict_hoax, statusClass: styles.verdictBadgeDanger };
+      return { label: t.verdict_hoax, statusClass: styles.verdictHoax };
     }
     if (
       normalized === 'UNVERIFIED' ||
       normalized.includes('UNVERIFIED') ||
       normalized.includes('BELUM TERVERIFIKASI')
     ) {
-      return { label: t.verdict_unverified, statusClass: styles.verdictBadgeNeutral };
+      return { label: t.verdict_unverified, statusClass: styles.verdictUnverified };
     }
     if (
       normalized === 'VERIFIED' ||
@@ -51,7 +48,7 @@ export default function ResultCard({ report, language }: ResultCardProps) {
       normalized.includes('FACT') ||
       normalized.includes('TRUE')
     ) {
-      return { label: t.verdict_fakta, statusClass: styles.verdictBadgeSuccess };
+      return { label: t.verdict_fakta, statusClass: styles.verdictVerified };
     }
     if (
       normalized === 'MISLEADING' ||
@@ -61,52 +58,9 @@ export default function ResultCard({ report, language }: ResultCardProps) {
       normalized.includes('MIXED') ||
       normalized.includes('NEUTRAL')
     ) {
-      return { label: t.verdict_neutral, statusClass: styles.verdictBadgeWarning };
+      return { label: t.verdict_neutral, statusClass: styles.verdictMisleading };
     }
-    return { label: t.verdict_unverified, statusClass: styles.verdictBadgeNeutral };
-  };
-
-  const getClaimVerdictClass = (verdict: string) => {
-    const normalized = verdict.toUpperCase();
-    if (
-      normalized === 'HOAX' ||
-      normalized.includes('HOAKS') ||
-      normalized.includes('HOAX') ||
-      normalized.includes('FAKE') ||
-      normalized.includes('FALSE')
-    ) {
-      return styles.verdictHOAKS;
-    }
-    if (
-      normalized === 'UNVERIFIED' ||
-      normalized.includes('UNVERIFIED') ||
-      normalized.includes('BELUM TERVERIFIKASI')
-    ) {
-      return styles.verdictUNKNOWN;
-    }
-    if (
-      normalized === 'VERIFIED' ||
-      normalized.includes('FAKTA') ||
-      normalized.includes('FACT') ||
-      normalized.includes('TRUE')
-    ) {
-      return styles.verdictFAKTA;
-    }
-    if (normalized.includes('MISLEADING') || normalized.includes('MENYESATKAN')) {
-      return styles.verdictMISLEADING;
-    }
-    return styles.verdictUNKNOWN;
-  };
-
-  const getConfidenceClass = (level: string) => {
-    switch (level.toLowerCase()) {
-      case 'high':
-        return styles.confidenceHigh;
-      case 'medium':
-        return styles.confidenceMedium;
-      default:
-        return styles.confidenceLow;
-    }
+    return { label: t.verdict_unverified, statusClass: styles.verdictUnverified };
   };
 
   const getConfidenceLabel = (level: string) => {
@@ -120,242 +74,359 @@ export default function ResultCard({ report, language }: ResultCardProps) {
     }
   };
 
+  const getSeverityLabel = (severity: 'LOW' | 'MEDIUM' | 'HIGH') => {
+    switch (severity) {
+      case 'HIGH':
+        return t.severity_high;
+      case 'MEDIUM':
+        return t.severity_medium;
+      default:
+        return t.severity_low;
+    }
+  };
+
+  const getTemporalLabel = (
+    status: 'CURRENT' | 'OUTDATED_RECYCLED' | 'UNDATED' | 'UNCLEAR'
+  ) => {
+    switch (status) {
+      case 'CURRENT':
+        return t.temporal_current;
+      case 'OUTDATED_RECYCLED':
+        return t.temporal_outdated;
+      case 'UNDATED':
+        return t.temporal_undated;
+      default:
+        return t.temporal_unclear;
+    }
+  };
+
+  const getAttributionLabel = (
+    clarity: 'CLEAR' | 'PARTIAL' | 'ANONYMOUS_OR_MISSING'
+  ) => {
+    switch (clarity) {
+      case 'CLEAR':
+        return t.attr_clear;
+      case 'PARTIAL':
+        return t.attr_partial;
+      default:
+        return t.attr_missing;
+    }
+  };
+
   const verdictConfig = getLocalizedVerdict(overallVerdict);
   const totalClaimsCount = claims.length > 0 ? claims.length : claimAssessments.length;
 
   return (
-    <article className={styles.resultCard} id="result-card" aria-labelledby="result-title">
-      <header className={styles.verdictHeader}>
-        <div className={`${styles.verdictBadge} ${verdictConfig.statusClass}`}>
-          {verdictConfig.label}
-        </div>
-        <h2 id="result-title" className={styles.articleTitle}>
-          {report.articleTitle}
-        </h2>
-        <div className={styles.inputSource}>{report.inputValue}</div>
-      </header>
+    <article className={styles.broadsheet} id="result-card" aria-labelledby="result-title">
+      <div className={styles.mainColumn}>
+        <header className={styles.reportHeader}>
+          <div className={styles.kickerRow}>
+            <span className={styles.kicker}>{t.reportKicker}</span>
+            {report.cached && (
+              <span className={styles.cachedBadge}>{t.cachedResult}</span>
+            )}
+          </div>
 
-      <section className={styles.scoreSection} aria-label={t.credibilityScore}>
-        <div
-          className={styles.gauge}
-          role="img"
-          aria-label={`${t.credibilityScore}: ${report.credibilityScore}/100`}
-        >
-          <svg className={styles.gaugeCircle} viewBox="0 0 160 160" aria-hidden="true">
-            <circle className={styles.gaugeBg} cx="80" cy="80" r={radius} />
-            <circle
-              className={styles.gaugeProgress}
-              cx="80"
-              cy="80"
-              r={radius}
-              stroke={scoreColor}
-              strokeDasharray={circumference}
-              strokeDashoffset={dashOffset}
-            />
-          </svg>
-          <div className={styles.gaugeCenter}>
-            <span className={styles.gaugeScore} style={{ color: scoreColor }}>
-              {report.credibilityScore}
+          <div className={styles.verdictStrip}>
+            <span className={`${styles.verdictStamp} ${verdictConfig.statusClass}`}>
+              {verdictConfig.label}
             </span>
-            <span className={styles.gaugeLabel}>{t.credibilityScore.split(' ')[0]}</span>
+            <div className={styles.scoreMetrics}>
+              <span className={styles.metricPill}>
+                {t.confidence}: <strong>{confidenceScore}%</strong> (
+                {getConfidenceLabel(report.confidenceLevel)})
+              </span>
+              <span className={styles.metricPill}>
+                {t.credibilityScore}: <strong>{report.credibilityScore}/100</strong>
+              </span>
+            </div>
           </div>
-        </div>
 
-        <div className={styles.scoreDetails}>
-          <div className={styles.scoreDetail}>
-            {t.credibilityScore}: <strong>{report.credibilityScore}/100</strong>
-          </div>
-          <div className={styles.scoreDetail}>
-            {t.confidence}:{' '}
-            <span
-              className={`${styles.confidenceBadge} ${getConfidenceClass(report.confidenceLevel)}`}
-            >
-              {getConfidenceLabel(report.confidenceLevel)} ({confidenceScore}%)
+          <h2 id="result-title" className={styles.articleTitle}>
+            {report.articleTitle}
+          </h2>
+
+          <div className={styles.datelineBar}>
+            <span>
+              {t.analyzedAt}: {formatDate(report.analyzedAt, language)}
+            </span>
+            <span>
+              {t.analysisTime}: {(report.analysisTimeMs / 1000).toFixed(1)}s
+            </span>
+            <span>
+              {t.claimsAnalyzed}: {totalClaimsCount}
+            </span>
+            <span>
+              {t.sourcesFound}: {evidenceSources.length}
             </span>
           </div>
-          <div className={styles.scoreDetail}>
-            {t.claimsAnalyzed}: <strong>{totalClaimsCount}</strong>
-          </div>
-          <div className={styles.scoreDetail}>
-            {t.sourcesFound}: <strong>{evidenceSources.length}</strong>
-          </div>
-          {report.cached && (
-            <div className={styles.scoreDetail}>
-              <span className={`${styles.confidenceBadge} ${styles.confidenceMedium}`}>
-                {t.cachedResult}
-              </span>
-            </div>
-          )}
-        </div>
-      </section>
 
-      <section className={styles.summary} aria-labelledby="summary-title">
-        <h3 id="summary-title" className={styles.sectionTitle}>
-          {t.summary}
-        </h3>
-        <p className={styles.summaryText}>{report.summary}</p>
-      </section>
+          <div className={styles.inputSource}>{report.inputValue}</div>
+        </header>
 
-      {signals && (
-        <section className={styles.claimsSection} aria-labelledby="signals-title">
-          <h3 id="signals-title" className={styles.sectionTitle}>
-            {t.journalisticSignals}
+        <section className={styles.summarySection} aria-labelledby="summary-title">
+          <h3 id="summary-title" className={styles.sectionKicker}>
+            {t.summary}
           </h3>
-          <div className={styles.claimCard}>
-            <div className={styles.claimHeader}>
-              <div className={styles.claimText}>{t.signalClickbait}</div>
-              <span
-                className={`${styles.claimVerdict} ${
-                  signals.clickbait.detected ? styles.verdictMISLEADING : styles.verdictFAKTA
-                }`}
-              >
-                {signals.clickbait.severity}
-              </span>
-            </div>
-            <p className={styles.claimExplanation}>{signals.clickbait.reason}</p>
-          </div>
-          <div className={styles.claimCard}>
-            <div className={styles.claimHeader}>
-              <div className={styles.claimText}>{t.signalTemporal}</div>
-              <span
-                className={`${styles.claimVerdict} ${
-                  signals.temporalContext.status === 'CURRENT'
-                    ? styles.verdictFAKTA
-                    : signals.temporalContext.status === 'OUTDATED_RECYCLED'
-                      ? styles.verdictHOAKS
-                      : styles.verdictUNKNOWN
-                }`}
-              >
-                {signals.temporalContext.status}
-              </span>
-            </div>
-            <p className={styles.claimExplanation}>
-              {signals.temporalContext.publishedDate
-                ? `${signals.temporalContext.publishedDate} — `
-                : ''}
-              {signals.temporalContext.reason}
-            </p>
-          </div>
-          <div className={styles.claimCard}>
-            <div className={styles.claimHeader}>
-              <div className={styles.claimText}>{t.signalAttribution}</div>
-              <span
-                className={`${styles.claimVerdict} ${
-                  signals.sourceAttribution.clarity === 'CLEAR'
-                    ? styles.verdictFAKTA
-                    : signals.sourceAttribution.clarity === 'PARTIAL'
-                      ? styles.verdictMISLEADING
-                      : styles.verdictHOAKS
-                }`}
-              >
-                {signals.sourceAttribution.clarity}
-              </span>
-            </div>
-            <p className={styles.claimExplanation}>{signals.sourceAttribution.reason}</p>
-          </div>
+          <p className={styles.summaryText}>{report.summary}</p>
         </section>
-      )}
 
-      {(redFlags.length > 0 || positiveIndicators.length > 0) && (
-        <section className={styles.findingsSection} aria-label={t.summary}>
-          {redFlags.length > 0 && (
-            <div className={`${styles.findingsList} ${styles.redFlagsList}`}>
-              <h3 className={`${styles.findingsListTitle} ${styles.red}`}>{t.redFlags}</h3>
-              <ul className={styles.findingsItems}>
-                {redFlags.map((flag, i) => (
-                  <li key={i} className={styles.findingItem}>
-                    {flag}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {positiveIndicators.length > 0 && (
-            <div className={`${styles.findingsList} ${styles.positiveList}`}>
-              <h3 className={`${styles.findingsListTitle} ${styles.green}`}>
-                {t.positiveIndicators}
-              </h3>
-              <ul className={styles.findingsItems}>
-                {positiveIndicators.map((indicator, i) => (
-                  <li key={i} className={styles.findingItem}>
-                    {indicator}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </section>
-      )}
+        {(redFlags.length > 0 || positiveIndicators.length > 0) && (
+          <section className={styles.indicatorsGrid} aria-label={t.summary}>
+            {redFlags.length > 0 && (
+              <div className={`${styles.indicatorBox} ${styles.indicatorDanger}`}>
+                <h3 className={`${styles.indicatorTitle} ${styles.indicatorTitleDanger}`}>
+                  {t.redFlags}
+                </h3>
+                <ul className={styles.indicatorList}>
+                  {redFlags.map((flag, i) => (
+                    <li key={i} className={styles.indicatorItem}>
+                      {flag}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {positiveIndicators.length > 0 && (
+              <div className={`${styles.indicatorBox} ${styles.indicatorSuccess}`}>
+                <h3 className={`${styles.indicatorTitle} ${styles.indicatorTitleSuccess}`}>
+                  {t.positiveIndicators}
+                </h3>
+                <ul className={styles.indicatorList}>
+                  {positiveIndicators.map((indicator, i) => (
+                    <li key={i} className={styles.indicatorItem}>
+                      {indicator}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        )}
 
-      {claims.length > 0 ? (
-        <section className={styles.claimsSection} aria-labelledby="claims-title">
-          <h3 id="claims-title" className={styles.sectionTitle}>
-            {t.claimsAssessment}
-          </h3>
-          {claims.map((claim) => {
-            const localizedStatus = getLocalizedVerdict(claim.status);
-            return (
-              <article key={claim.id} className={styles.claimCard}>
-                <div className={styles.claimHeader}>
-                  <div className={styles.claimText}>&ldquo;{claim.statement}&rdquo;</div>
-                  <span
-                    className={`${styles.claimVerdict} ${getClaimVerdictClass(claim.status)}`}
-                  >
-                    {localizedStatus.label} ({claim.confidence}%)
-                  </span>
-                </div>
-                <p className={styles.claimExplanation}>{claim.reasoning}</p>
-                {claim.searchQuery && (
-                  <div className={styles.inputSource}>
-                    {t.searchQueryLabel}: {claim.searchQuery}
-                  </div>
-                )}
-                {(claim.supportingUrls ?? []).length > 0 && (
-                  <ul className={styles.findingsItems}>
-                    {claim.supportingUrls.map((url) => (
-                      <li key={url} className={styles.findingItem}>
-                        <a href={url} target="_blank" rel="noopener noreferrer">
-                          {t.supportingUrlsLabel}: {url}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </article>
-            );
-          })}
-        </section>
-      ) : (
-        claimAssessments.length > 0 && (
+        {claims.length > 0 ? (
           <section className={styles.claimsSection} aria-labelledby="claims-title">
-            <h3 id="claims-title" className={styles.sectionTitle}>
+            <h3 id="claims-title" className={styles.sectionHeading}>
               {t.claimsAssessment}
             </h3>
-            {claimAssessments.map((assessment, i) => (
-              <article key={i} className={styles.claimCard}>
-                <div className={styles.claimHeader}>
-                  <div className={styles.claimText}>&ldquo;{assessment.claim}&rdquo;</div>
-                  <span
-                    className={`${styles.claimVerdict} ${getClaimVerdictClass(assessment.verdict)}`}
-                  >
-                    {getLocalizedVerdict(assessment.verdict).label}
-                  </span>
-                </div>
-                <p className={styles.claimExplanation}>{assessment.explanation}</p>
-              </article>
-            ))}
-          </section>
-        )
-      )}
+            <ol className={styles.claimsList}>
+              {claims.map((claim, index) => {
+                const localizedStatus = getLocalizedVerdict(claim.status);
+                const claimNumber = String(index + 1).padStart(2, '0');
+                return (
+                  <li key={claim.id} className={styles.claimItem}>
+                    <div className={styles.claimMetaRow}>
+                      <span className={styles.claimNumber}>
+                        {t.claimLabel} {claimNumber}
+                      </span>
+                      <div className={styles.claimBadges}>
+                        <span
+                          className={`${styles.claimStatusStamp} ${localizedStatus.statusClass}`}
+                        >
+                          {localizedStatus.label}
+                        </span>
+                        <span className={styles.claimConfidence}>
+                          {claim.confidence}%
+                        </span>
+                      </div>
+                    </div>
 
-      <footer className={styles.meta}>
-        <span>
-          {t.analyzedAt}: {formatDate(report.analyzedAt, language)}
-        </span>
-        <span>
-          {t.analysisTime}: {(report.analysisTimeMs / 1000).toFixed(1)}s
-        </span>
-      </footer>
+                    <h4 className={styles.claimStatement}>
+                      &ldquo;{claim.statement}&rdquo;
+                    </h4>
+
+                    <p className={styles.claimReasoning}>{claim.reasoning}</p>
+
+                    {claim.searchQuery && (
+                      <div className={styles.claimQuery}>
+                        <span className={styles.claimQueryLabel}>{t.searchQueryLabel}:</span>{' '}
+                        <code>{claim.searchQuery}</code>
+                      </div>
+                    )}
+
+                    {(claim.supportingUrls ?? []).length > 0 && (
+                      <ul className={styles.supportingLinks}>
+                        {claim.supportingUrls.map((url) => (
+                          <li key={url} className={styles.supportingLinkItem}>
+                            <span className={styles.supportingLabel}>
+                              {t.supportingUrlsLabel}:
+                            </span>{' '}
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={styles.supportingLink}
+                            >
+                              {url}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        ) : (
+          claimAssessments.length > 0 && (
+            <section className={styles.claimsSection} aria-labelledby="claims-title">
+              <h3 id="claims-title" className={styles.sectionHeading}>
+                {t.claimsAssessment}
+              </h3>
+              <ol className={styles.claimsList}>
+                {claimAssessments.map((assessment, index) => {
+                  const localizedStatus = getLocalizedVerdict(assessment.verdict);
+                  const claimNumber = String(index + 1).padStart(2, '0');
+                  return (
+                    <li key={index} className={styles.claimItem}>
+                      <div className={styles.claimMetaRow}>
+                        <span className={styles.claimNumber}>
+                          {t.claimLabel} {claimNumber}
+                        </span>
+                        <span
+                          className={`${styles.claimStatusStamp} ${localizedStatus.statusClass}`}
+                        >
+                          {localizedStatus.label}
+                        </span>
+                      </div>
+                      <h4 className={styles.claimStatement}>
+                        &ldquo;{assessment.claim}&rdquo;
+                      </h4>
+                      <p className={styles.claimReasoning}>{assessment.explanation}</p>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          )
+        )}
+      </div>
+
+      <aside className={styles.sidebarColumn} aria-label={t.journalisticSignals}>
+        {signals && (
+          <section className={styles.sidebarPanel} aria-labelledby="signals-title">
+            <h3 id="signals-title" className={styles.sidebarHeading}>
+              {t.journalisticSignals}
+            </h3>
+
+            <div className={styles.signalRow}>
+              <div className={styles.signalHeader}>
+                <span className={styles.signalName}>{t.signalClickbait}</span>
+                <span
+                  className={`${styles.signalBadge} ${
+                    signals.clickbait.detected
+                      ? styles.verdictMisleading
+                      : styles.verdictVerified
+                  }`}
+                >
+                  {getSeverityLabel(signals.clickbait.severity)}
+                </span>
+              </div>
+              <p className={styles.signalReason}>{signals.clickbait.reason}</p>
+            </div>
+
+            <div className={styles.signalRow}>
+              <div className={styles.signalHeader}>
+                <span className={styles.signalName}>{t.signalTemporal}</span>
+                <span
+                  className={`${styles.signalBadge} ${
+                    signals.temporalContext.status === 'CURRENT'
+                      ? styles.verdictVerified
+                      : signals.temporalContext.status === 'OUTDATED_RECYCLED'
+                        ? styles.verdictHoax
+                        : styles.verdictUnverified
+                  }`}
+                >
+                  {getTemporalLabel(signals.temporalContext.status)}
+                </span>
+              </div>
+              <p className={styles.signalReason}>
+                {signals.temporalContext.publishedDate
+                  ? `${signals.temporalContext.publishedDate} — `
+                  : ''}
+                {signals.temporalContext.reason}
+              </p>
+            </div>
+
+            <div className={styles.signalRow}>
+              <div className={styles.signalHeader}>
+                <span className={styles.signalName}>{t.signalAttribution}</span>
+                <span
+                  className={`${styles.signalBadge} ${
+                    signals.sourceAttribution.clarity === 'CLEAR'
+                      ? styles.verdictVerified
+                      : signals.sourceAttribution.clarity === 'PARTIAL'
+                        ? styles.verdictMisleading
+                        : styles.verdictHoax
+                  }`}
+                >
+                  {getAttributionLabel(signals.sourceAttribution.clarity)}
+                </span>
+              </div>
+              <p className={styles.signalReason}>{signals.sourceAttribution.reason}</p>
+            </div>
+          </section>
+        )}
+
+        {aiAudit && (
+          <section className={styles.sidebarPanel} aria-labelledby="audit-title">
+            <h3 id="audit-title" className={styles.sidebarHeading}>
+              {t.aiAuditTitle}
+            </h3>
+            <dl className={styles.auditList}>
+              <div className={styles.auditItem}>
+                <dt className={styles.auditTerm}>{t.auditModel}</dt>
+                <dd className={styles.auditValue}>{aiAudit.modelUsed}</dd>
+              </div>
+              <div className={styles.auditItem}>
+                <dt className={styles.auditTerm}>{t.auditReranker}</dt>
+                <dd className={styles.auditValue}>{aiAudit.rerankerUsed.toUpperCase()}</dd>
+              </div>
+              <div className={styles.auditItem}>
+                <dt className={styles.auditTerm}>{t.auditSelfCritique}</dt>
+                <dd className={styles.auditValue}>
+                  {aiAudit.selfCritiqueAdjusted ? t.auditAdjustedYes : t.auditAdjustedNo}
+                </dd>
+              </div>
+            </dl>
+            {aiAudit.auditNote && (
+              <div className={styles.auditNoteBox}>
+                <span className={styles.auditNoteLabel}>{t.auditNoteLabel}</span>
+                <p className={styles.auditNoteText}>{aiAudit.auditNote}</p>
+              </div>
+            )}
+          </section>
+        )}
+
+        {providerStatus && providerStatus.warnings.length > 0 && (
+          <section className={styles.warningPanel} aria-labelledby="provider-warnings-title">
+            <h3 id="provider-warnings-title" className={styles.warningTitle}>
+              {t.providerWarningsTitle}
+            </h3>
+            <div className={styles.providerMetaRow}>
+              <span>
+                {t.providerSearchLabel}: {providerStatus.search}
+              </span>
+              <span>
+                {t.providerScraperLabel}: {providerStatus.scraper}
+              </span>
+              <span>
+                {t.providerFactcheckLabel}: {providerStatus.factcheck}
+              </span>
+            </div>
+            <ul className={styles.warningList}>
+              {providerStatus.warnings.map((warning, idx) => (
+                <li key={idx} className={styles.warningItem}>
+                  {warning}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <EvidenceList report={report} language={language} />
+      </aside>
     </article>
   );
 }

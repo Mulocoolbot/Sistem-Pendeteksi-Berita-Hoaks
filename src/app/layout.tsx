@@ -1,35 +1,50 @@
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Newsreader, Libre_Franklin, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
 
-const inter = Inter({
+const newsreader = Newsreader({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-serif',
+  display: 'swap',
+  style: ['normal', 'italic'],
+});
+
+const libreFranklin = Libre_Franklin({
+  subsets: ['latin'],
+  variable: '--font-sans',
   display: 'swap',
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const ibmPlexMono = IBM_Plex_Mono({
   subsets: ['latin'],
-  variable: '--font-jetbrains-mono',
+  weight: ['400', '500', '600'],
+  variable: '--font-mono',
   display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: 'Hoax Detector — Sistem Pendeteksi Berita Hoaks',
+  title: 'Fact Check — Independent News Verification Desk',
   description:
-    'Deteksi berita hoaks secara otomatis menggunakan AI. Masukkan URL atau upload gambar berita untuk mendapatkan investigasi mendalam tentang keaslian berita.',
+    'Verify news articles and screenshots against credible sources with multi-claim analysis.',
   keywords: [
-    'hoax detector',
-    'fake news',
-    'berita hoaks',
-    'fact checker',
-    'pendeteksi hoaks',
-    'verifikasi berita',
+    'fact check',
+    'news verification',
+    'claim verification',
+    'media literacy',
+    'journalistic audit',
+    'hoax detection',
   ],
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '16x16 32x32 48x48', type: 'image/x-icon' },
+      { url: '/icon.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
   openGraph: {
-    title: 'Hoax Detector — Sistem Pendeteksi Berita Hoaks',
+    title: 'Fact Check — Independent News Verification Desk',
     description:
-      'Deteksi berita hoaks secara otomatis menggunakan AI. Investigasi mendalam tentang keaslian berita.',
+      'Verify news articles and screenshots against credible sources with multi-claim analysis.',
     type: 'website',
   },
 };
@@ -40,7 +55,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html
+      lang="en"
+      className={`${newsreader.variable} ${libreFranklin.variable} ${ibmPlexMono.variable}`}
+    >
       <body>{children}</body>
     </html>
   );
