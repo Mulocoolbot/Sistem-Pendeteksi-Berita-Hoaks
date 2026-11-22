@@ -70,6 +70,10 @@ interface TranslationDictionary {
   auditAdjustedYes: string;
   auditAdjustedNo: string;
   auditNoteLabel: string;
+  auditVerificationDepth: string;
+  auditDepthStandard: string;
+  auditDepthDeep: string;
+  auditFullArticlesRead: string;
   providerWarningsTitle: string;
   providerSearchLabel: string;
   providerScraperLabel: string;
@@ -167,6 +171,10 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
     auditAdjustedYes: 'Adjusted',
     auditAdjustedNo: 'Unchanged',
     auditNoteLabel: 'Note',
+    auditVerificationDepth: 'Verification Depth',
+    auditDepthStandard: 'Standard',
+    auditDepthDeep: 'Deep Loop',
+    auditFullArticlesRead: 'Full Articles Read',
     providerWarningsTitle: 'System Notices',
     providerSearchLabel: 'Search',
     providerScraperLabel: 'Extractor',
@@ -258,6 +266,10 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationDictionary> = {
     auditAdjustedYes: 'Disesuaikan',
     auditAdjustedNo: 'Tanpa Revisi',
     auditNoteLabel: 'Catatan',
+    auditVerificationDepth: 'Kedalaman Verifikasi',
+    auditDepthStandard: 'Standar',
+    auditDepthDeep: 'Investigasi Mendalam',
+    auditFullArticlesRead: 'Artikel Penuh Dibaca',
     providerWarningsTitle: 'Catatan Sistem',
     providerSearchLabel: 'Pencarian',
     providerScraperLabel: 'Ekstraktor',

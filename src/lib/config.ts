@@ -1,4 +1,4 @@
-export const DEFAULT_GROQ_MODEL_FAST = 'llama-3.3-70b-versatile';
+export const DEFAULT_GROQ_MODEL_FAST = 'qwen/qwen3.8-27b';
 export const DEFAULT_GROQ_MODEL_REASONING = 'openai/gpt-oss-120b';
 export const DEFAULT_GROQ_MODEL_VISION = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
@@ -16,6 +16,10 @@ export interface EnvConfig {
 
 export const HTTP_TIMEOUT_MS = 10_000;
 export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+export const CONFIDENCE_TARGET = 75;
+export const MAX_DEEP_ARTICLES = 3;
+export const DEEP_SCRAPE_TIMEOUT_MS = 6000;
+export const DEEP_ARTICLE_MAX_CHARS = 1500;
 export const ALLOWED_IMAGE_MIMES: readonly string[] = [
   'image/png',
   'image/jpeg',
@@ -62,6 +66,7 @@ export const APP_CONFIG = {
     jinaScrapeMs: HTTP_TIMEOUT_MS,
     cacheScrapeMs: 4000,
     simpleScrapeMs: 4000,
+    deepScrapeMs: DEEP_SCRAPE_TIMEOUT_MS,
     searchThrottleDelayMs: 1000,
     stepSimulationIntervalMs: 3000,
     scrollIntoViewDelayMs: 300,
@@ -72,10 +77,14 @@ export const APP_CONFIG = {
     minCheerioContentLength: 200,
     minExtractedImageTextLength: 10,
     maxImageSizeBytes: MAX_IMAGE_SIZE_BYTES,
+    confidenceTarget: CONFIDENCE_TARGET,
+    maxDeepArticles: MAX_DEEP_ARTICLES,
+    deepArticleMaxChars: DEEP_ARTICLE_MAX_CHARS,
     maxRelatedArticlesToScrape: 3,
     maxSearchQueriesToRun: 2,
     resultsPerSearchQuery: 5,
     defaultSearchResults: 5,
+    advancedSearchResults: 8,
     reportContentPreviewLength: 2000,
     relatedArticleExcerptLength: 700,
     evidenceSnippetLength: 160,
