@@ -24,11 +24,13 @@ jobs:
 
     steps:
       - name: Validate required Vercel secrets
+        id: check_secrets
         shell: bash
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
 
@@ -38,30 +40,57 @@ jobs:
           if [ -z "${VERCEL_PROJECT_ID:-}" ]; then MISSING+=("VERCEL_PROJECT_ID"); fi
 
           if [ "${#MISSING[@]}" -gt 0 ]; then
-            echo "::error::Secret GitHub Actions untuk deployment Vercel belum dikonfigurasi: ${MISSING[*]}"
-            echo "Tambahkan secret yang hilang pada GitHub Repository -> Settings -> Secrets and variables -> Actions."
-            exit 1
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Deployment Vercel Dilewati (Secrets Belum Dikonfigurasi)"
+              echo "Secret berikut belum ditemukan pada **Settings -> Secrets and variables -> Actions**:"
+              for s in "${MISSING[@]}"; do
+                echo "- \`${s}\`"
+              done
+              echo ""
+              echo "Tambahkan ketiga secret tersebut agar deployment otomatis ke Vercel Production berjalan."
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+              echo "::error::Secret GitHub Actions untuk deployment Vercel belum dikonfigurasi: ${MISSING[*]}"
+              echo "Tambahkan secret yang hilang pada GitHub Repository -> Settings -> Secrets and variables -> Actions."
+              exit 1
+            fi
+
+            echo "::warning::Secret GitHub Actions untuk deployment Vercel belum dikonfigurasi (${MISSING[*]}). Melewati langkah deploy Vercel CLI hingga secret ditambahkan."
+            exit 0
           fi
 
+          echo "ready=true" >> "$GITHUB_OUTPUT"
           echo "Seluruh secret deployment Vercel (VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID) tersedia."
 
       - name: Checkout repository
+        if: steps.check_secrets.outputs.ready == 'true'
         uses: actions/checkout@v4
 
       - name: Setup Node.js 20
+        if: steps.check_secrets.outputs.ready == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
+      - name: Install dependencies
+        if: steps.check_secrets.outputs.ready == 'true'
+        run: npm ci
+
       - name: Install Vercel CLI
+        if: steps.check_secrets.outputs.ready == 'true'
         run: npm install -g vercel@latest
 
       - name: Pull Vercel production environment
+        if: steps.check_secrets.outputs.ready == 'true'
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Build production artifacts with Vercel CLI
+        if: steps.check_secrets.outputs.ready == 'true'
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy prebuilt artifacts to Vercel Production
+        if: steps.check_secrets.outputs.ready == 'true'
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
