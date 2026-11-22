@@ -1,5 +1,8 @@
 # Sistem Pendeteksi Berita Hoaks
 
+[![CI](https://github.com/Mulocoolbot/Sistem-Pendeteksi-Berita-Hoaks/actions/workflows/ci.yml/badge.svg)](https://github.com/Mulocoolbot/Sistem-Pendeteksi-Berita-Hoaks/actions/workflows/ci.yml)
+[![Deploy](https://github.com/Mulocoolbot/Sistem-Pendeteksi-Berita-Hoaks/actions/workflows/deploy.yml/badge.svg)](https://github.com/Mulocoolbot/Sistem-Pendeteksi-Berita-Hoaks/actions/workflows/deploy.yml)
+
 Aplikasi web berbasis Next.js (App Router) dengan TypeScript untuk menganalisis kredibilitas berita dari URL artikel maupun unggahan gambar tangkapan layar tanpa ketergantungan Google Cloud Billing. Sistem mengekstrak konten artikel (fast-path Cheerio dengan fallback otomatis ke Jina Reader API) atau teks pada gambar, mengidentifikasi klaim atomik beserta sinyal jurnalistik menggunakan Groq API, memverifikasi klaim secara paralel ke domain pemeriksa fakta terverifikasi serta pencarian berita terkait melalui Tavily Search API (dengan fallback otomatis ke Jina Search API), lalu menyusun laporan investigasi lengkap beserta skor kredibilitas dan metadata `providerStatus`.
 
 ## Tech Stack
@@ -79,10 +82,50 @@ Seluruh variabel lingkungan berikut dibaca oleh `getEnvConfig()` di `src/lib/con
 | `TAVILY_API_KEY` | Opsional (Primary Search & Fact-Check) | `src/lib/services/search.ts`, `src/lib/services/factcheck.ts` | API key Tavily Search (`POST https://api.tavily.com/search`) untuk pencarian berita utama serta pencarian klaim ke domain pemeriksa fakta terverifikasi (`turnbackhoax.id`, `cekfakta.com`, `cekfakta.tempo.co`, `snopes.com`, `politifact.com`, `factcheck.org`, `fullfact.org`). Jika kosong atau gagal (HTTP 4xx/5xx/timeout), sistem otomatis fallback ke Jina Search (`https://s.jina.ai/`). |
 | `JINA_API_KEY` | Opsional (Reader, Search Fallback & Semantic Reranker) | `src/lib/services/scraper.ts`, `src/lib/services/search.ts`, `src/lib/services/factcheck.ts`, `src/lib/services/reranker.ts` | API key Jina AI untuk meningkatkan rate limit Jina Reader (`https://r.jina.ai/`), fallback Jina Search (`https://s.jina.ai/`), serta mengaktifkan Jina Reranker v2 (`https://api.jina.ai/v1/rerank`); jika kosong atau gagal, reranker otomatis fallback ke reranker lokal BM25 + token-overlap. |
 
+## CI/CD, GitHub Secrets & Branch Protection
+
+Repositori ini menggunakan GitHub Actions dan Dependabot untuk otomatisasi kualitas kode, deployment produksi ke Vercel, dan pembaruan dependensi:
+
+- **`.github/workflows/ci.yml`**: Berjalan pada `push` ke branch `main` dan `develop`, serta `pull_request` ke `main`. Menjalankan `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm run build`, serta blackbox smoke test (`GET /` → HTTP `200` dan `POST /api/analyze/url` dengan `{}` → HTTP `400`).
+- **`.github/workflows/deploy.yml`**: Berjalan pada `push` ke branch `main`, tag rilis `v*.*.*`, serta pemicu manual (`workflow_dispatch`). Memvalidasi ketersediaan secret Vercel lalu menjalankan `vercel pull --yes --environment=production`, `vercel build --prod`, dan `vercel deploy --prebuilt --prod`.
+- **`.github/dependabot.yml`**: Memeriksa pembaruan dependensi secara mingguan (`weekly`) untuk ekosistem `npm` dan `github-actions`.
+
+### Daftar GitHub Secrets & Environment Produksi
+
+Konfigurasikan `VERCEL_TOKEN`, `VERCEL_ORG_ID`, dan `VERCEL_PROJECT_ID` pada **GitHub Repository → Settings → Secrets and variables → Actions**. Seluruh variabel aplikasi dari `.env.example` di bawah ini harus dikonfigurasikan pada **Vercel Project Settings → Environment Variables (Production)** agar ditarik otomatis saat `vercel pull --yes --environment=production` (dan dapat pula disinkronkan ke GitHub Secrets bila dibutuhkan workflow tambahan):
+
+| Nama Secret / Variabel | Status | Lokasi Konfigurasi | Keterangan |
+| --- | --- | --- | --- |
+| `VERCEL_TOKEN` | Wajib | GitHub Actions Secret | Personal/team access token Vercel CLI untuk `vercel pull`, `vercel build --prod`, dan `vercel deploy --prebuilt --prod`. |
+| `VERCEL_ORG_ID` | Wajib | GitHub Actions Secret | ID organisasi/akun Vercel (diperoleh dari `.vercel/project.json` setelah `vercel link`). |
+| `VERCEL_PROJECT_ID` | Wajib | GitHub Actions Secret | ID proyek Vercel target deployment (diperoleh dari `.vercel/project.json` setelah `vercel link`). |
+| `GROQ_API_KEY` | Wajib | Vercel Production Env / Secret | API key Groq untuk ekstraksi klaim, penyusunan query, sintesis, audit self-critique, dan ekstraksi teks gambar. |
+| `GROQ_MODEL_FAST` | Opsional | Vercel Production Env | Override model cepat Groq (nilai `.env.example`: `llama-3.3-70b-versatile`). |
+| `GROQ_MODEL_REASONING` | Opsional | Vercel Production Env | Override model reasoning utama (nilai `.env.example`: `openai/gpt-oss-120b`). |
+| `GROQ_MODEL_VISION` | Opsional | Vercel Production Env | Override model vision/OCR (nilai `.env.example`: `meta-llama/llama-4-scout-17b-16e-instruct`). |
+| `AI_CUSTOM_BASE_URL` | Opsional | Vercel Production Env | Base URL endpoint OpenAI-compatible kustom untuk tugas `reason` dan `audit`. |
+| `AI_CUSTOM_API_KEY` | Opsional | Vercel Production Env / Secret | API key Bearer untuk endpoint `AI_CUSTOM_BASE_URL`. |
+| `AI_CUSTOM_MODEL` | Opsional | Vercel Production Env | Nama model pada endpoint `AI_CUSTOM_BASE_URL`. |
+| `TAVILY_API_KEY` | Opsional (Disarankan) | Vercel Production Env / Secret | API key Tavily Search untuk pencarian berita utama dan verifikasi domain fact-checker. |
+| `JINA_API_KEY` | Opsional | Vercel Production Env / Secret | API key Jina AI untuk rate limit Jina Reader/Search fallback dan Jina Reranker v2. |
+
+### Panduan Singkat Mengaktifkan Branch Protection di `main`
+
+1. Buka **Settings → Branches** pada repositori `Mulocoolbot/Sistem-Pendeteksi-Berita-Hoaks`, lalu klik **Add branch protection rule** (atau gunakan **Settings → Rules → Rulesets**).
+2. Isi **Branch name pattern** dengan `main`.
+3. Aktifkan **Require a pull request before merging** (disarankan minimal 1 approval dan aktifkan *Dismiss stale pull request approvals when new commits are pushed*).
+4. Aktifkan **Require status checks to pass before merging** dan **Require branches to be up to date before merging**, lalu tambahkan required check **`Quality & Blackbox Smoke Test`** (job `quality-and-smoke-test` dari workflow `CI`).
+5. Aktifkan **Do not allow bypassing the above settings** (disarankan) serta pastikan **Allow force pushes** dan **Allow deletions** tidak diaktifkan, lalu simpan (**Create / Save changes**).
+
 ## Struktur Folder
 
 ```text
 .
+├── .github/
+│   ├── dependabot.yml                      # Jadwal pembaruan mingguan npm & github-actions
+│   └── workflows/
+│       ├── ci.yml                          # Pipeline CI: lint, typecheck, build & smoke test
+│       └── deploy.yml                      # Pipeline deploy produksi ke Vercel
 ├── .env.example                            # Templat variabel lingkungan
 ├── .gitignore                              # Aturan pengabaian file Git
 ├── eslint.config.mjs                       # Konfigurasi ESLint
