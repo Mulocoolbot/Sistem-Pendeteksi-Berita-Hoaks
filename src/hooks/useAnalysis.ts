@@ -15,7 +15,7 @@ const ANALYSIS_STEPS: AnalysisStep[] = [
   'generating-report',
 ];
 
-export function useAnalysis(language: LanguageCode) {
+export function useAnalysis(language: LanguageCode = 'en') {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentStep, setCurrentStep] = useState<AnalysisStep>('idle');
   const [report, setReport] = useState<InvestigationReport | null>(null);

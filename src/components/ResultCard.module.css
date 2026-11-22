@@ -1,341 +1,538 @@
-.resultCard {
-  max-width: 900px;
-  margin: 0 auto var(--spacing-2xl);
-  padding: var(--spacing-2xl);
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-sm);
+.broadsheet {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  border-top: 2px solid var(--border-strong);
+  padding-top: 1.75rem;
 }
 
-.verdictHeader {
-  text-align: center;
-  margin-bottom: var(--spacing-2xl);
-  padding-bottom: var(--spacing-xl);
-  border-bottom: 1px solid var(--border-subtle);
+.mainColumn {
+  min-width: 0;
 }
 
-.verdictBadge {
-  display: inline-block;
-  padding: 0.5rem 1.5rem;
-  border-radius: var(--radius-full);
-  border: 1px solid transparent;
-  font-family: var(--font-sans);
-  font-size: 1.25rem;
+.sidebarColumn {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  border-top: 1px solid var(--border-hairline);
+  padding-top: 1.75rem;
+}
+
+.reportHeader {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-hairline);
+  margin-bottom: 1.5rem;
+}
+
+.kickerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.kicker {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.6875rem;
   font-weight: 700;
-  margin-bottom: var(--spacing-lg);
-  letter-spacing: 0.03em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
-.verdictBadgeDanger {
-  background-color: var(--status-hoax-bg);
-  border-color: var(--status-hoax-border);
-  color: var(--status-hoax);
+.cachedBadge {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.5rem;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sharp);
+  color: var(--text-body);
 }
 
-.verdictBadgeSuccess {
-  background-color: var(--status-verified-bg);
-  border-color: var(--status-verified-border);
-  color: var(--status-verified);
+.verdictStrip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 1.15rem;
 }
 
-.verdictBadgeWarning {
-  background-color: var(--status-misleading-bg);
-  border-color: var(--status-misleading-border);
-  color: var(--status-misleading);
+.verdictStamp {
+  display: inline-block;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sharp);
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.verdictBadgeNeutral {
-  background-color: var(--status-unverified-bg);
-  border-color: var(--status-unverified-border);
-  color: var(--status-unverified);
+.verdictVerified {
+  background-color: var(--verdict-verified-bg);
+  border-color: var(--verdict-verified-border);
+  color: var(--verdict-verified);
+}
+
+.verdictMisleading {
+  background-color: var(--verdict-misleading-bg);
+  border-color: var(--verdict-misleading-border);
+  color: var(--verdict-misleading);
+}
+
+.verdictHoax {
+  background-color: var(--verdict-hoax-bg);
+  border-color: var(--verdict-hoax-border);
+  color: var(--verdict-hoax);
+}
+
+.verdictUnverified {
+  background-color: var(--verdict-unverified-bg);
+  border-color: var(--verdict-unverified-border);
+  color: var(--verdict-unverified);
+}
+
+.scoreMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.15rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: var(--text-body);
+  font-variant-numeric: tabular-nums;
+}
+
+.metricPill strong {
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .articleTitle {
-  font-size: 1.15rem;
-  font-weight: 600;
+  font-family: var(--font-serif), Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
   color: var(--text-primary);
-  margin: 0 auto var(--spacing-sm);
-  max-width: 65ch;
+  margin-bottom: 0.9rem;
+  text-wrap: balance;
+}
+
+.datelineBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.25rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 0.55rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .inputSource {
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  word-break: break-all;
-}
-
-.scoreSection {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--spacing-2xl);
-  margin-bottom: var(--spacing-2xl);
-  flex-wrap: wrap;
-}
-
-.gauge {
-  position: relative;
-  width: 160px;
-  height: 160px;
-}
-
-.gaugeCircle {
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-}
-
-.gaugeBg {
-  fill: none;
-  stroke: var(--bg-surface-emphasis);
-  stroke-width: 8;
-}
-
-.gaugeProgress {
-  fill: none;
-  stroke-width: 8;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 250ms ease-out;
-}
-
-.gaugeCenter {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.gaugeScore {
-  font-family: var(--font-sans);
-  font-size: 2.5rem;
-  font-weight: 800;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.gaugeLabel {
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 0.72rem;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-top: 4px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
-.scoreDetails {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
+.summarySection {
+  margin-bottom: 1.75rem;
 }
 
-.scoreDetail {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  font-size: 0.92rem;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.confidenceBadge {
-  padding: 0.15rem 0.6rem;
-  border-radius: var(--radius-full);
-  border: 1px solid transparent;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.confidenceHigh {
-  background-color: var(--status-verified-bg);
-  border-color: var(--status-verified-border);
-  color: var(--status-verified);
-}
-
-.confidenceMedium {
-  background-color: var(--status-misleading-bg);
-  border-color: var(--status-misleading-border);
-  color: var(--status-misleading);
-}
-
-.confidenceLow {
-  background-color: var(--status-hoax-bg);
-  border-color: var(--status-hoax-border);
-  color: var(--status-hoax);
-}
-
-.summary {
-  margin-bottom: var(--spacing-2xl);
-}
-
-.sectionTitle {
-  font-family: var(--font-sans);
-  font-size: 1.1rem;
+.sectionKicker {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.6875rem;
   font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: var(--spacing-md);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
 }
 
 .summaryText {
-  color: var(--text-secondary);
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 1.0625rem;
+  color: var(--text-body);
   line-height: 1.7;
-  font-size: 0.95rem;
+  max-width: 65ch;
   white-space: pre-wrap;
 }
 
-.findingsSection {
+.indicatorsGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-2xl);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
 }
 
-.findingsList {
-  padding: var(--spacing-lg);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-subtle);
+.indicatorBox {
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sharp);
 }
 
-.redFlagsList {
-  background-color: var(--status-hoax-bg);
-  border-color: var(--status-hoax-border);
+.indicatorDanger {
+  background-color: var(--verdict-hoax-bg);
+  border-color: var(--verdict-hoax-border);
 }
 
-.positiveList {
-  background-color: var(--status-verified-bg);
-  border-color: var(--status-verified-border);
+.indicatorSuccess {
+  background-color: var(--verdict-verified-bg);
+  border-color: var(--verdict-verified-border);
 }
 
-.findingsListTitle {
-  font-size: 0.92rem;
-  font-weight: 600;
-  margin-bottom: var(--spacing-md);
+.indicatorTitle {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
 }
 
-.findingsListTitle.red {
-  color: var(--status-hoax);
+.indicatorTitleDanger {
+  color: var(--verdict-hoax);
 }
 
-.findingsListTitle.green {
-  color: var(--status-verified);
+.indicatorTitleSuccess {
+  color: var(--verdict-verified);
 }
 
-.findingsItems {
+.indicatorList {
   list-style: disc;
-  padding-left: var(--spacing-lg);
+  padding-left: 1.1rem;
 }
 
-.findingItem {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  margin-bottom: var(--spacing-sm);
+.indicatorItem {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 0.9rem;
+  color: var(--text-body);
   line-height: 1.5;
+  margin-bottom: 0.35rem;
 }
 
-.findingItem:last-child {
+.indicatorItem:last-child {
   margin-bottom: 0;
 }
 
 .claimsSection {
-  margin-bottom: var(--spacing-2xl);
+  border-top: 1px solid var(--border-strong);
+  padding-top: 1.25rem;
 }
 
-.claimCard {
-  padding: var(--spacing-lg);
-  background-color: var(--bg-surface-muted);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--spacing-md);
+.sectionHeading {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
 }
 
-.claimHeader {
+.claimsList {
+  list-style: none;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-sm);
+  flex-direction: column;
 }
 
-.claimText {
-  font-size: 0.95rem;
+.claimItem {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.claimItem:first-child {
+  padding-top: 0.25rem;
+}
+
+.claimItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.claimMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.claimNumber {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.claimBadges {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.claimStatusStamp {
+  padding: 0.14rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sharp);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.claimConfidence {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-primary);
-  flex: 1;
-  line-height: 1.5;
-}
-
-.claimVerdict {
-  padding: 0.2rem 0.7rem;
-  border-radius: var(--radius-full);
-  border: 1px solid transparent;
-  font-size: 0.72rem;
-  font-weight: 700;
-  white-space: nowrap;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.verdictHOAKS {
-  background-color: var(--status-hoax-bg);
-  border-color: var(--status-hoax-border);
-  color: var(--status-hoax);
-}
-
-.verdictFAKTA {
-  background-color: var(--status-verified-bg);
-  border-color: var(--status-verified-border);
-  color: var(--status-verified);
-}
-
-.verdictMISLEADING {
-  background-color: var(--status-misleading-bg);
-  border-color: var(--status-misleading-border);
-  color: var(--status-misleading);
-}
-
-.verdictUNKNOWN {
-  background-color: var(--status-unverified-bg);
-  border-color: var(--status-unverified-border);
-  color: var(--status-unverified);
-}
-
-.claimExplanation {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
-
-.meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: var(--spacing-lg);
-  border-top: 1px solid var(--border-subtle);
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
   font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 768px) {
-  .resultCard {
-    padding: var(--spacing-lg);
+.claimStatement {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin-bottom: 0.55rem;
+}
+
+.claimReasoning {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 0.96875rem;
+  color: var(--text-body);
+  line-height: 1.65;
+  max-width: 65ch;
+  margin-bottom: 0.65rem;
+}
+
+.claimQuery {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.claimQueryLabel {
+  font-weight: 600;
+  color: var(--text-body);
+}
+
+.supportingLinks {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.supportingLinkItem {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.supportingLabel {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.supportingLink {
+  color: var(--accent-link);
+}
+
+.supportingLink:hover {
+  color: var(--accent-link-hover);
+  text-decoration: underline;
+}
+
+.sidebarPanel {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sharp);
+  padding: 1.15rem 1.25rem;
+}
+
+.sidebarHeading {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--border-strong);
+  margin-bottom: 0.85rem;
+}
+
+.signalRow {
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.signalRow:first-of-type {
+  padding-top: 0;
+}
+
+.signalRow:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.signalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.signalName {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.signalBadge {
+  padding: 0.1rem 0.42rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sharp);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.signalReason {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 0.875rem;
+  color: var(--text-body);
+  line-height: 1.5;
+}
+
+.auditList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.auditItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.auditTerm {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.auditValue {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.auditNoteBox {
+  padding-top: 0.25rem;
+}
+
+.auditNoteLabel {
+  display: block;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+}
+
+.auditNoteText {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 0.875rem;
+  color: var(--text-body);
+  line-height: 1.5;
+}
+
+.warningPanel {
+  background-color: var(--verdict-misleading-bg);
+  border: 1px solid var(--verdict-misleading-border);
+  border-left: 3px solid var(--verdict-misleading);
+  border-radius: var(--radius-sharp);
+  padding: 1rem 1.15rem;
+}
+
+.warningTitle {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--verdict-misleading);
+  margin-bottom: 0.5rem;
+}
+
+.providerMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  color: var(--text-body);
+  margin-bottom: 0.55rem;
+}
+
+.warningList {
+  list-style: disc;
+  padding-left: 1.1rem;
+}
+
+.warningItem {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 0.84rem;
+  color: var(--text-body);
+  line-height: 1.45;
+  margin-bottom: 0.25rem;
+}
+
+.warningItem:last-child {
+  margin-bottom: 0;
+}
+
+@media (min-width: 960px) {
+  .broadsheet {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: 2rem;
+    align-items: start;
   }
 
-  .scoreSection {
-    flex-direction: column;
-    gap: var(--spacing-lg);
-  }
-
-  .findingsSection {
-    grid-template-columns: 1fr;
-  }
-
-  .claimHeader {
-    flex-direction: column;
+  .sidebarColumn {
+    border-top: none;
+    border-left: 1px solid var(--border-hairline);
+    padding-top: 0;
+    padding-left: 1.75rem;
   }
 }

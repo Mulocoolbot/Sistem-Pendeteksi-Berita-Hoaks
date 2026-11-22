@@ -1,68 +1,177 @@
-.hero {
-  text-align: center;
-  padding: var(--spacing-3xl) 0 var(--spacing-2xl);
+.masthead {
+  padding-top: 1.25rem;
+  margin-bottom: 2rem;
 }
 
-.badge {
-  display: inline-block;
-  padding: 0.35rem 0.9rem;
-  background-color: var(--bg-surface-muted);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-full);
-  font-size: 0.78rem;
+.mastheadGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas: 'left center right';
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 1rem;
+}
+
+.zoneLeft {
+  grid-area: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.editionDate {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: var(--spacing-lg);
-  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+.deskLabel {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.zoneCenter {
+  grid-area: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.brandRow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.brandMark {
+  flex-shrink: 0;
+  display: block;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
 }
 
 .title {
-  font-family: var(--font-sans);
-  font-size: clamp(2rem, 4.5vw, 3.4rem);
-  font-weight: 800;
-  line-height: 1.12;
+  font-family: var(--font-serif), Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.15rem, 4.6vw, 3.6rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
   color: var(--text-primary);
-  margin-bottom: var(--spacing-lg);
-  text-wrap: balance;
+  margin: 0;
 }
 
-.titleEmphasis {
-  color: var(--text-secondary);
+.titleSub {
+  margin-top: 0.35rem;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.zoneRight {
+  grid-area: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.editionLabel {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.deckBand {
+  border-top: 1px solid var(--border-hairline);
+  padding: 1rem 0 1.15rem;
+  text-align: center;
 }
 
 .subtitle {
-  font-size: clamp(0.95rem, 1.8vw, 1.1rem);
-  color: var(--text-secondary);
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: clamp(0.95rem, 1.5vw, 1.0625rem);
+  color: var(--text-body);
   max-width: 65ch;
-  margin: 0 auto var(--spacing-2xl);
-  line-height: 1.65;
+  margin: 0 auto 0.85rem;
+  line-height: 1.55;
 }
 
 .features {
   list-style: none;
   display: flex;
   justify-content: center;
-  gap: var(--spacing-lg);
+  align-items: center;
   flex-wrap: wrap;
+  gap: 0.35rem 0;
 }
 
 .feature {
-  padding: 0.35rem 0.85rem;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-full);
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-secondary);
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 0.85rem;
+  border-right: 1px solid var(--border-hairline);
+}
+
+.feature:last-child {
+  border-right: none;
+}
+
+.doubleRule {
+  width: 100%;
+  height: 4px;
+  border-top: 1px solid var(--border-strong);
+  border-bottom: 2px solid var(--border-strong);
 }
 
 @media (max-width: 768px) {
-  .hero {
-    padding: var(--spacing-xl) 0 var(--spacing-lg);
+  .masthead {
+    padding-top: 0.75rem;
+    margin-bottom: 1.5rem;
   }
 
-  .features {
-    gap: var(--spacing-sm);
+  .mastheadGrid {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'left right'
+      'center center';
+    row-gap: 0.75rem;
+    padding-bottom: 0.85rem;
+  }
+
+  .editionLabel {
+    display: none;
+  }
+
+  .brandMark {
+    width: 36px;
+    height: 36px;
+  }
+
+  .feature {
+    padding: 0 0.55rem;
+    font-size: 0.625rem;
   }
 }

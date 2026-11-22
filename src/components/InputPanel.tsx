@@ -4,6 +4,8 @@ import { useState, useRef, useCallback } from 'react';
 import styles from './InputPanel.module.css';
 import { TRANSLATIONS, type LanguageCode } from '@/lib/utils/translations';
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
 interface InputPanelProps {
   language: LanguageCode;
   onAnalyzeUrl: (url: string) => Promise<void>;
@@ -32,11 +34,7 @@ export default function InputPanel({
 
   const handleUrlSubmit = useCallback(async () => {
     if (!url.trim()) {
-      setError(
-        language === 'id'
-          ? 'Masukkan URL berita terlebih dahulu.'
-          : 'Please enter a news URL first.'
-      );
+      setError(t.errEmptyUrl);
       return;
     }
 
@@ -45,23 +43,14 @@ export default function InputPanel({
     try {
       await onAnalyzeUrl(url.trim());
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : language === 'id'
-            ? 'Terjadi kesalahan.'
-            : 'An error occurred.';
+      const message = err instanceof Error ? err.message : t.errGeneric;
       setError(message);
     }
-  }, [url, language, onAnalyzeUrl, onClearError]);
+  }, [url, t.errEmptyUrl, t.errGeneric, onAnalyzeUrl, onClearError]);
 
   const handleImageSubmit = useCallback(async () => {
     if (!imageFile) {
-      setError(
-        language === 'id'
-          ? 'Upload gambar berita terlebih dahulu.'
-          : 'Please upload a news image first.'
-      );
+      setError(t.errEmptyImg);
       return;
     }
 
@@ -70,29 +59,18 @@ export default function InputPanel({
     try {
       await onAnalyzeImage(imageFile);
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : language === 'id'
-            ? 'Terjadi kesalahan.'
-            : 'An error occurred.';
+      const message = err instanceof Error ? err.message : t.errGeneric;
       setError(message);
     }
-  }, [imageFile, language, onAnalyzeImage, onClearError]);
+  }, [imageFile, t.errEmptyImg, t.errGeneric, onAnalyzeImage, onClearError]);
 
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith('image/')) {
-      setError(
-        language === 'id'
-          ? 'File harus berupa gambar (PNG, JPEG, atau WebP).'
-          : 'File must be an image (PNG, JPEG, or WebP).'
-      );
+      setError(t.errInvalidImgType);
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setError(
-        language === 'id' ? 'Ukuran file maksimal 10MB.' : 'Maximum file size is 10MB.'
-      );
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError(t.errMaxImgSize);
       return;
     }
     setError(null);
@@ -136,18 +114,18 @@ export default function InputPanel({
 
   const displayedError = error || externalError;
   const isSubmitDisabled = isAnalyzing || (activeTab === 'url' ? !url.trim() : !imageFile);
-  const tabListLabel = language === 'id' ? 'Metode input' : 'Input method';
-  const removeButtonLabel = imageFile
-    ? language === 'id'
-      ? `Hapus ${imageFile.name}`
-      : `Remove ${imageFile.name}`
-    : language === 'id'
-      ? 'Hapus gambar'
-      : 'Remove image';
+  const removeButtonLabel = imageFile ? `${t.removeImage} ${imageFile.name}` : t.removeImage;
 
   return (
     <section className={styles.panel} aria-label={activeTab === 'url' ? t.tabUrl : t.tabImg}>
-      <div className={styles.tabBar} role="tablist" aria-label={tabListLabel}>
+      <div className={styles.panelHeader}>
+        <span className={styles.kicker}>{t.deskKicker}</span>
+        {activeTab === 'image' && (
+          <span className={styles.limitBadge}>{t.maxSizeBadge}</span>
+        )}
+      </div>
+
+      <div className={styles.tabBar} role="tablist" aria-label={t.tabListLabel}>
         <button
           id="tab-url"
           type="button"
@@ -188,15 +166,33 @@ export default function InputPanel({
             <label htmlFor="url-input" className={styles.fieldLabel}>
               {t.tabUrl}
             </label>
-            <input
-              type="url"
-              className={styles.urlInput}
-              placeholder={t.urlPlaceholder}
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              disabled={isAnalyzing}
-              id="url-input"
-            />
+            <div className={styles.urlRow}>
+              <input
+                type="url"
+                className={styles.urlInput}
+                placeholder={t.urlPlaceholder}
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                disabled={isAnalyzing}
+                id="url-input"
+              />
+              <button
+                type="submit"
+                className={`btn btn-primary ${styles.submitBtn}`}
+                disabled={isSubmitDisabled}
+                aria-busy={isAnalyzing}
+                id="submit-btn"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <span className={styles.spinner} aria-hidden="true" />
+                    {t.btnInvestigating}
+                  </>
+                ) : (
+                  t.btnInvestigate
+                )}
+              </button>
+            </div>
           </div>
         )}
 
@@ -264,41 +260,32 @@ export default function InputPanel({
                       setImagePreview(null);
                     }}
                   >
-                    {language === 'id' ? 'Hapus' : 'Remove'}
+                    {t.removeImage}
                   </button>
                 )}
               </div>
             )}
+
+            <div className={styles.submitWrapper}>
+              <button
+                type="submit"
+                className={`btn btn-primary ${styles.submitBtn}`}
+                disabled={isSubmitDisabled}
+                aria-busy={isAnalyzing}
+                id="submit-btn"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <span className={styles.spinner} aria-hidden="true" />
+                    {t.btnInvestigating}
+                  </>
+                ) : (
+                  t.btnInvestigate
+                )}
+              </button>
+            </div>
           </div>
         )}
-
-        <div className={styles.submitWrapper}>
-          <button
-            type="submit"
-            className={`btn btn-primary ${styles.submitBtn}`}
-            disabled={isSubmitDisabled}
-            aria-busy={isAnalyzing}
-            id="submit-btn"
-          >
-            {isAnalyzing ? (
-              <>
-                <svg className={styles.spinnerSvg} viewBox="0 0 50 50" aria-hidden="true">
-                  <circle
-                    className={styles.spinnerPath}
-                    cx="25"
-                    cy="25"
-                    r="20"
-                    fill="none"
-                    strokeWidth="5"
-                  />
-                </svg>
-                {t.btnInvestigating}
-              </>
-            ) : (
-              t.btnInvestigate
-            )}
-          </button>
-        </div>
       </form>
 
       {displayedError && (

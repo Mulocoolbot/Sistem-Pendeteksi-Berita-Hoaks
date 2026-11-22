@@ -5,13 +5,11 @@ import HeroSection from '@/components/HeroSection';
 import InputPanel from '@/components/InputPanel';
 import AnalysisTimeline from '@/components/AnalysisTimeline';
 import ResultCard from '@/components/ResultCard';
-import EvidenceList from '@/components/EvidenceList';
-import LanguageSelector from '@/components/LanguageSelector';
 import { useAnalysis } from '@/hooks/useAnalysis';
 import { TRANSLATIONS, type LanguageCode } from '@/lib/utils/translations';
 
 export default function HomePage() {
-  const [language, setLanguage] = useState<LanguageCode>('id');
+  const [language, setLanguage] = useState<LanguageCode>('en');
   const {
     isAnalyzing,
     currentStep,
@@ -28,11 +26,7 @@ export default function HomePage() {
   return (
     <div className="container">
       <header>
-        <LanguageSelector
-          currentLanguage={language}
-          onLanguageChange={(lang) => setLanguage(lang)}
-        />
-        <HeroSection language={language} />
+        <HeroSection language={language} onLanguageChange={setLanguage} />
       </header>
 
       <main id="main-content">
@@ -55,19 +49,14 @@ export default function HomePage() {
           )}
 
           <div ref={resultRef}>
-            {report && (
-              <>
-                <ResultCard report={report} language={language} />
-                <EvidenceList report={report} language={language} />
-              </>
-            )}
+            {report && <ResultCard report={report} language={language} />}
           </div>
         </section>
       </main>
 
       <footer className="site-footer">
         <p className="site-footer-disclaimer">{t.disclaimer}</p>
-        <p>{t.poweredBy}</p>
+        <p className="site-footer-meta">{t.poweredBy}</p>
       </footer>
     </div>
   );
