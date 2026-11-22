@@ -62,12 +62,15 @@ export default function EvidenceList({ report, language }: EvidenceListProps) {
   };
 
   return (
-    <div className={styles.evidenceWrapper}>
+    <div className={`${styles.evidenceWrapper} fc-fade-up`}>
       {factCheckResults.length > 0 && (
         <section className={styles.sectionBlock} aria-labelledby="factcheck-title">
-          <h3 id="factcheck-title" className={styles.kickerHeading}>
-            {t.officialFactCheck}
-          </h3>
+          <div className={styles.sectionHeaderRow}>
+            <h3 id="factcheck-title" className={styles.kickerHeading}>
+              {t.officialFactCheck}
+            </h3>
+            <span className={styles.countMeta}>{factCheckResults.length}</span>
+          </div>
           <div className={styles.listStack}>
             {factCheckResults.map((fc, i) => (
               <article key={i} className={styles.factCheckItem}>
@@ -80,9 +83,7 @@ export default function EvidenceList({ report, language }: EvidenceListProps) {
                 {fc.reviews.map((review, j) => (
                   <div key={j} className={styles.factCheckReview}>
                     <span className={styles.reviewRating}>{review.rating}</span>
-                    <span className={styles.reviewPublisher}>
-                      {t.reviewedBy} {review.publisher}
-                    </span>
+                    <span className={styles.reviewPublisher}>{review.publisher}</span>
                     {(review.credibilityTier || review.credibilityLabel) && (
                       <span
                         className={`${styles.metaBadge} ${getCredibilityBadgeClass(
@@ -115,7 +116,7 @@ export default function EvidenceList({ report, language }: EvidenceListProps) {
           <h3 id="evidence-title" className={styles.kickerHeading}>
             {t.foundSources}
           </h3>
-          <span className={styles.countMeta}>({evidenceSources.length})</span>
+          <span className={styles.countMeta}>{evidenceSources.length}</span>
         </div>
 
         {evidenceSources.length > 0 ? (
@@ -157,7 +158,7 @@ export default function EvidenceList({ report, language }: EvidenceListProps) {
                     )}
                     {source.similarityScore > 0 && (
                       <span className={styles.similarityScore}>
-                        {t.similarity}: {source.similarityScore}%
+                        {source.similarityScore}% {t.similarity}
                       </span>
                     )}
                   </div>

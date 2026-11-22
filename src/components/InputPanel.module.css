@@ -1,44 +1,16 @@
 .panel {
   max-width: 780px;
   margin: 0 auto 2.5rem;
-  padding: 1.5rem 1.75rem 1.75rem;
+  padding: 1.35rem 1.75rem 1.65rem;
   background-color: var(--bg-page);
   border: 1px solid var(--border-hairline);
   border-top: 2px solid var(--border-strong);
   border-radius: var(--radius-sharp);
 }
 
-.panelHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.kicker {
-  font-family: var(--font-sans), sans-serif;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.limitBadge {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  color: var(--text-body);
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-hairline);
-  padding: 0.15rem 0.5rem;
-  border-radius: var(--radius-sharp);
-}
-
 .tabBar {
   display: flex;
+  align-items: center;
   gap: 1.5rem;
   border-bottom: 1px solid var(--border-hairline);
   margin-bottom: 1.25rem;
@@ -80,19 +52,25 @@
   border-bottom-color: var(--border-strong);
 }
 
+.limitBadge {
+  margin-left: auto;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-sharp);
+  white-space: nowrap;
+}
+
 .inputGroup {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-}
-
-.fieldLabel {
-  font-family: var(--font-sans), sans-serif;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-primary);
 }
 
 .urlRow {
@@ -153,13 +131,6 @@
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 0.35rem;
-}
-
-.dropzoneHint {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.75rem;
-  color: var(--text-muted);
 }
 
 .fileInput {
@@ -220,11 +191,15 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: background-color var(--transition-fast);
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
 }
 
 .previewRemove:hover {
   background-color: var(--verdict-hoax-bg);
+}
+
+.previewRemove:active {
+  transform: scale(0.98);
 }
 
 .previewRemove:focus-visible {
@@ -239,17 +214,15 @@
 }
 
 .submitBtn {
-  min-width: 190px;
+  min-width: 148px;
   white-space: nowrap;
 }
 
-.spinner {
+.spinnerIcon {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #FFFFFF;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+  display: block;
 }
 
 .error {

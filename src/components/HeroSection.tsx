@@ -44,12 +44,11 @@ export default function HeroSection({ language, onLanguageChange }: HeroSectionP
 
         <div className={styles.zoneCenter}>
           <div className={styles.brandRow}>
-            <BrandMark size={44} className={styles.brandMark} />
+            <BrandMark size={42} className={styles.brandMark} />
             <h1 id="hero-heading" className={styles.title}>
               {t.titleMain}
             </h1>
           </div>
-          <p className={styles.titleSub}>{t.titleSub}</p>
         </div>
 
         <div className={styles.zoneRight}>
@@ -59,18 +58,7 @@ export default function HeroSection({ language, onLanguageChange }: HeroSectionP
               onLanguageChange={onLanguageChange}
             />
           )}
-          <span className={styles.editionLabel}>{t.editionLabel}</span>
         </div>
-      </div>
-
-      <div className={styles.deckBand}>
-        <p className={styles.subtitle}>{t.subtitle}</p>
-        <ul className={styles.features} aria-label={t.featuresLabel}>
-          <li className={styles.feature}>{t.featureUrl}</li>
-          <li className={styles.feature}>{t.featureImg}</li>
-          <li className={styles.feature}>{t.featureLang}</li>
-          <li className={styles.feature}>{t.featureEngine}</li>
-        </ul>
       </div>
 
       <div className={styles.doubleRule} aria-hidden="true" />

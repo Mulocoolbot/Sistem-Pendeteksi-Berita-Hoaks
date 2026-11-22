@@ -15,6 +15,33 @@ interface InputPanelProps {
   onClearError?: () => void;
 }
 
+function SubmitSpinner() {
+  return (
+    <svg
+      className={`${styles.spinnerIcon} fc-spin`}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle
+        cx="8"
+        cy="8"
+        r="6"
+        stroke="currentColor"
+        strokeOpacity="0.28"
+        strokeWidth="1.75"
+      />
+      <path
+        d="M14 8a6 6 0 0 0-6-6"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export default function InputPanel({
   language,
   onAnalyzeUrl,
@@ -118,13 +145,6 @@ export default function InputPanel({
 
   return (
     <section className={styles.panel} aria-label={activeTab === 'url' ? t.tabUrl : t.tabImg}>
-      <div className={styles.panelHeader}>
-        <span className={styles.kicker}>{t.deskKicker}</span>
-        {activeTab === 'image' && (
-          <span className={styles.limitBadge}>{t.maxSizeBadge}</span>
-        )}
-      </div>
-
       <div className={styles.tabBar} role="tablist" aria-label={t.tabListLabel}>
         <button
           id="tab-url"
@@ -158,12 +178,15 @@ export default function InputPanel({
         >
           {t.tabImg}
         </button>
+        {activeTab === 'image' && (
+          <span className={styles.limitBadge}>{t.maxSizeBadge}</span>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} noValidate>
         {activeTab === 'url' && (
           <div id="panel-url" role="tabpanel" aria-labelledby="tab-url" className={styles.inputGroup}>
-            <label htmlFor="url-input" className={styles.fieldLabel}>
+            <label htmlFor="url-input" className="sr-only">
               {t.tabUrl}
             </label>
             <div className={styles.urlRow}>
@@ -185,7 +208,7 @@ export default function InputPanel({
               >
                 {isAnalyzing ? (
                   <>
-                    <span className={styles.spinner} aria-hidden="true" />
+                    <SubmitSpinner />
                     {t.btnInvestigating}
                   </>
                 ) : (
@@ -198,7 +221,7 @@ export default function InputPanel({
 
         {activeTab === 'image' && (
           <div id="panel-image" role="tabpanel" aria-labelledby="tab-image" className={styles.inputGroup}>
-            <label htmlFor="image-input" className={styles.fieldLabel}>
+            <label htmlFor="image-input" className="sr-only">
               {t.tabImg}
             </label>
             {!imageFile ? (
@@ -222,7 +245,6 @@ export default function InputPanel({
                 }}
               >
                 <p className={styles.dropzoneText}>{t.dragText}</p>
-                <p className={styles.dropzoneHint}>{t.dragSubtext}</p>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -258,6 +280,9 @@ export default function InputPanel({
                     onClick={() => {
                       setImageFile(null);
                       setImagePreview(null);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                      }
                     }}
                   >
                     {t.removeImage}
@@ -276,7 +301,7 @@ export default function InputPanel({
               >
                 {isAnalyzing ? (
                   <>
-                    <span className={styles.spinner} aria-hidden="true" />
+                    <SubmitSpinner />
                     {t.btnInvestigating}
                   </>
                 ) : (
